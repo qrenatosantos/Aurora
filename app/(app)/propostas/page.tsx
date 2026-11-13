@@ -1,6 +1,6 @@
 /**
  * PROPOSTAS: todas as propostas visíveis, com filtro por situação.
- * O gestor vê no topo as que aguardam aprovação de desconto.
+ * O gestor vê no topo as que aguardam a aprovação dele (nenhuma proposta sai sem ela).
  */
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -52,7 +52,7 @@ export default async function PaginaPropostas({ searchParams }: { searchParams: 
           href="/propostas?status=aguardando_aprovacao"
           className="mb-4 flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-alerta-forte bg-alerta-suave px-4 py-3 text-sm font-semibold text-alerta"
         >
-          {aguardando.count} proposta(s) aguardando sua aprovação de desconto <span aria-hidden>→</span>
+          {aguardando.count === 1 ? "1 proposta aguardando" : `${aguardando.count} propostas aguardando`} sua aprovação <span aria-hidden>→</span>
         </Link>
       )}
       <Filtros
@@ -82,12 +82,14 @@ export default async function PaginaPropostas({ searchParams }: { searchParams: 
                       {p.numero} · v{p.versao} <span className="font-normal text-texto-2">— {titulo.get(p.negocio_id) ?? p.titulo}</span>
                     </span>
                     <span className="block text-xs text-texto-2">
-                      {nomeVendedor.get(p.vendedor_id ?? "") ?? "—"} · criada {formatarData(p.created_at)} · válida até {formatarData(p.validade)}
+                      {p.pacote_nome ? `${p.pacote_nome} · ` : ""}
+                      {p.origem === "agente" ? "montada pelo agente" : (nomeVendedor.get(p.vendedor_id ?? "") ?? "—")} · criada {formatarData(p.created_at)}
+                      {p.validade ? ` · válida até ${formatarData(p.validade)}` : ""}
                       {p.visualizada_em ? ` · cliente abriu ${p.visualizacoes}x` : ""}
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
-                    <span className="num font-bold">{moedaInteira(p.total)}</span>
+                    <span className="num font-bold">{p.preco_pendente || Number(p.total) === 0 ? "valor a definir" : moedaInteira(p.total)}</span>
                     {expirada ? <Selo cor="alerta">Expirada</Selo> : <Selo cor={STATUS_PROPOSTA[p.status].cor}>{STATUS_PROPOSTA[p.status].nome}</Selo>}
                   </span>
                 </Link>
