@@ -7,7 +7,7 @@ export function SoGestor({ titulo = "Área do gestor" }: { titulo?: string }) {
     <EstadoVazio
       icone={Lock}
       titulo={titulo}
-      descricao="Só o gestor comercial (administrador) acessa esta tela. Se precisar mudar algo aqui, fale com ele."
+      descricao="Só o gestor (administrador) acessa esta tela. Se precisar mudar algo aqui, fale com ele."
     />
   );
 }

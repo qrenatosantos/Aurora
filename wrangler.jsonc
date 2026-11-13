@@ -10,5 +10,7 @@
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
 	},
+	// Mantém as variáveis cadastradas no painel do Cloudflare (ex.: ORIGENS_DO_SITE) a cada publicação.
+	"keep_vars": true,
 	"observability": { "enabled": true }
 }

@@ -55,7 +55,7 @@ const REGRAS_BANCO: [string, string][] = [
   ["metas_vendedor_uidx", "Já existe meta para este vendedor neste mês."],
   ["metas_equipe_uidx", "Já existe meta para esta equipe neste mês."],
   ["metas_algum_valor_ck", "Informe a meta em valor (R$) ou em número de vendas."],
-  ["vendedores_email_uidx", "Já existe um vendedor com este e-mail."],
+  ["vendedores_email_uidx", "Já existe uma pessoa cadastrada com este e-mail."],
   ["equipes_nome_uidx", "Já existe uma equipe com este nome."],
   ["origens_nome_uidx", "Já existe uma origem com este nome."],
   ["motivos_perda_nome_uidx", "Já existe um motivo com este nome."],

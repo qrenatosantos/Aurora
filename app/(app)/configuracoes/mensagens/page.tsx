@@ -14,7 +14,7 @@ export default async function PaginaMensagens() {
   if (!ehGestor(perfil)) return <SoGestor />;
   return (
     <>
-      <CabecalhoPagina titulo="Configurações" descricao="Mensagens prontas que os vendedores usam no botão WhatsApp/E-mail de cada negócio e contato." />
+      <CabecalhoPagina titulo="Configurações" descricao="Mensagens prontas para usar no botão WhatsApp/E-mail de cada negócio e contato." />
       <AbasConfiguracoes atual="/configuracoes/mensagens" />
       <Modelos modelos={modelos} />
     </>

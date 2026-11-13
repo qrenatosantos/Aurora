@@ -361,7 +361,7 @@ export default async function PaginaRelatorios({ searchParams }: { searchParams:
           <BarrasHorizontais itens={porTipo} vazio="Nenhuma atividade concluída no período." />
           {veTime && porVendAtv.size > 0 && (
             <>
-              <h3 className="mt-5 mb-2 text-sm font-semibold">Por vendedor</h3>
+              <h3 className="mt-5 mb-2 text-sm font-semibold">Por pessoa</h3>
               <BarrasHorizontais
                 itens={[...porVendAtv.entries()]
                   .sort((a, b) => b[1] - a[1])

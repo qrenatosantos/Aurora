@@ -4680,8 +4680,11 @@ end;
 $$;
 
 -- Cria contato (ou reaproveita pelo telefone) + negócio em "Novo lead" + evento.
+-- p_codigo: referência que o SITE já mostrou ao cliente na mensagem do WhatsApp ("Ref. XK4A").
+-- Vira o código do pedido, para a mensagem e o sistema falarem do mesmo número.
+drop function if exists privado.criar_lead(jsonb, jsonb, text, text, text, text);
 create or replace function privado.criar_lead(p_contato jsonb, p_evento jsonb, p_titulo text, p_origem text,
-                                              p_atendimento text, p_observacoes text)
+                                              p_atendimento text, p_observacoes text, p_codigo text default null)
 returns jsonb
 language plpgsql
 security definer
@@ -4746,9 +4749,11 @@ begin
   end if;
 
   v_titulo := left(coalesce(nullif(trim(p_titulo), ''), privado.rotulo_tipo_evento(v_tipo) || ' · ' || v_nome), 120);
-  insert into public.negocios (titulo, funil_id, etapa_id, vendedor_id, contato_id, origem_id, observacoes, atendimento)
+  insert into public.negocios (titulo, funil_id, etapa_id, vendedor_id, contato_id, origem_id, observacoes, atendimento, codigo)
   values (v_titulo, v_funil, v_etapa, v_dono, v_contato, v_origem, nullif(left(trim(p_observacoes), 4000), ''),
-          case when p_atendimento = 'agente' then 'agente' else 'humano' end)
+          case when p_atendimento = 'agente' then 'agente' else 'humano' end,
+          -- código já em uso (raro): o banco gera outro
+          case when p_codigo ~ '^[A-Z0-9]{4,10}$' and not exists (select 1 from public.negocios x where x.codigo = p_codigo) then p_codigo end)
   returning id, codigo into v_negocio, v_codigo;
 
   if p_evento is not null and jsonb_typeof(p_evento) = 'object' then
@@ -4779,6 +4784,7 @@ declare
   v_res     jsonb;
   v_existe  record;
   v_atend   text;
+  v_ref     text;
 begin
   if p is null or jsonb_typeof(p) <> 'object' or length(p::text) > 6000 then
     return jsonb_build_object('ok', false, 'mensagem', 'Pedido inválido.');
@@ -4821,7 +4827,27 @@ begin
       concat_ws(' · ', 'Pacote citado: ' || (v_evento ->> 'pacote'), v_obs));
   end if;
 
+  -- referência que o site escreveu na mensagem do WhatsApp (ex.: "Ref. XK4A")
+  v_ref := upper(trim(coalesce(p ->> 'ref', '')));
+  if v_ref !~ '^[A-Z0-9]{4,10}$' then
+    v_ref := null;
+  end if;
+
   perform set_config('app.ator', 'site', true);
+
+  -- o mesmo pedido chegando de novo (toque duplo, voltar e reenviar): atualiza, não duplica
+  if v_ref is not null then
+    select n.id, n.codigo, n.contato_id into v_existe
+      from public.negocios n
+     where n.codigo = v_ref and n.status = 'aberto' and n.created_at > now() - interval '24 hours'
+       and n.origem_id = (select o.id from public.origens o where lower(o.nome) = 'site' limit 1);
+    if v_existe.id is not null then
+      perform privado.gravar_evento(v_existe.id, v_evento);
+      insert into public.leads_recebidos (origem, dados, ip_hash, contato_id, negocio_id, status, motivo)
+      values ('site', p - 'site_web', v_ip_hash, v_existe.contato_id, v_existe.id, 'duplicado', 'Mesma referência do site.');
+      return jsonb_build_object('ok', true, 'codigo', v_existe.codigo);
+    end if;
+  end if;
 
   -- mesma pessoa (telefone) mandando de novo em 24 horas: atualiza o pedido em aberto, não duplica
   if v_tel is not null then
@@ -4843,7 +4869,8 @@ begin
     v_res := privado.criar_lead(jsonb_build_object('nome', v_nome, 'telefone', v_tel), v_evento, null, 'Site',
                                 coalesce(v_atend, 'humano'),
                                 case when v_tel is null and nullif(trim(coalesce(p ->> 'whatsapp', p ->> 'telefone')), '') is not null
-                                     then 'Telefone informado no site (formato não reconhecido): ' || left(trim(coalesce(p ->> 'whatsapp', p ->> 'telefone')), 30) end);
+                                     then 'Telefone informado no site (formato não reconhecido): ' || left(trim(coalesce(p ->> 'whatsapp', p ->> 'telefone')), 30) end,
+                                v_ref);
   exception when others then
     insert into public.leads_recebidos (origem, dados, ip_hash, status, motivo)
     values ('site', p - 'site_web', v_ip_hash, 'rejeitado', left(sqlerrm, 300));

@@ -44,7 +44,7 @@ export function MenuUsuario({ email, nome, gestor }: { email: string; nome?: str
           <div className="px-3 py-2">
             {nome && <p className="truncate text-sm font-semibold text-texto">{nome}</p>}
             <p className="truncate text-xs text-texto-2" title={email}>
-              {email} · {gestor ? "Gestor" : "Vendedor"}
+              {email} · {gestor ? "Gestor" : "Atendente"}
             </p>
           </div>
           {gestor && (

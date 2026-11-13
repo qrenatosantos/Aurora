@@ -157,6 +157,34 @@ describe("entrada de leads pelo site", () => {
     });
   });
 
+  test("pedido sem telefone: a referência do site vira o código do pedido e não duplica", async () => {
+    const pedido = { nome: "Clara", tipo: "15 anos", semdata: "on", mes: "jun/2028", convidados: "51 a 100", ref: "xk4a" };
+    const antes = await banco((tx) => valor(tx, "select count(*)::int from negocios"));
+    const r1 = await visitante((tx) => valor(tx, "select public.receber_lead_site($1::jsonb, $2)", [JSON.stringify(pedido), "198.51.100.7"]));
+    assert.deepEqual(r1, { ok: true, codigo: "XK4A" });
+    // toque duplo / voltar e reenviar: mesmo pedido, agora com a cidade
+    const r2 = await visitante((tx) =>
+      valor(tx, "select public.receber_lead_site($1::jsonb, $2)", [JSON.stringify({ ...pedido, cidade: "Uberaba" }), "198.51.100.7"]));
+    assert.deepEqual(r2, { ok: true, codigo: "XK4A" });
+    await banco(async (tx) => {
+      assert.equal(await valor(tx, "select count(*)::int from negocios"), antes + 1);
+      const n = await um(tx, "select n.*, c.telefone from negocios n join contatos c on c.id = n.contato_id where n.codigo = 'XK4A'");
+      assert.equal(n.telefone, null);
+      assert.equal(n.titulo, "15 anos · Clara");
+      assert.equal(await valor(tx, "select cidade from eventos where negocio_id = $1", [n.id]), "Uberaba");
+      assert.equal(await valor(tx, "select status from leads_recebidos where negocio_id = $1 order by created_at desc limit 1", [n.id]), "duplicado");
+    });
+    // referência já usada por um pedido antigo, ou fora do formato: o banco gera outro código
+    await banco((tx) => tx.query("update negocios set created_at = now() - interval '3 days' where codigo = 'XK4A'"));
+    const r3 = await visitante((tx) =>
+      valor(tx, "select public.receber_lead_site($1::jsonb, $2)", [JSON.stringify({ nome: "Outra pessoa", ref: "XK4A" }), "198.51.100.8"]));
+    assert.equal(r3.ok, true);
+    assert.match(r3.codigo, /^A[2-9A-Z]{5}$/);
+    const r4 = await visitante((tx) =>
+      valor(tx, "select public.receber_lead_site($1::jsonb, $2)", [JSON.stringify({ nome: "Mais uma", ref: "'; drop table x; --" }), "198.51.100.9"]));
+    assert.match(r4.codigo, /^A[2-9A-Z]{5}$/);
+  });
+
   test("robô (campo-armadilha), nome vazio e excesso de pedidos são barrados", async () => {
     const antes = await banco((tx) => valor(tx, "select count(*)::int from negocios"));
     const robo = await visitante((tx) => valor(tx, "select public.receber_lead_site($1::jsonb)", [JSON.stringify({ nome: "Bot", site_web: "http://x" })]));
@@ -702,9 +730,9 @@ describe("LGPD", () => {
       await tx.query(
         `insert into leads_recebidos (origem, dados, status, motivo) values
            ('site', '{"nome":"Pessoa do pedido rejeitado","whatsapp":"(34) 98888-7777"}', 'rejeitado', 'teste'),
-           ('site', '{"nome":"Outra pessoa","whatsapp":"(34) 97777-6666"}', 'rejeitado', 'teste')`,
+           ('site', '{"nome":"Pedido antigo sem contato","whatsapp":"(34) 97777-6666"}', 'rejeitado', 'teste')`,
       );
-      await tx.query("update leads_recebidos set created_at = now() - interval '3 years', ip_hash = 'abc' where dados ->> 'nome' = 'Outra pessoa'");
+      await tx.query("update leads_recebidos set created_at = now() - interval '3 years', ip_hash = 'abc' where dados ->> 'nome' = 'Pedido antigo sem contato'");
       return rows[0];
     });
     assert.ok(telefone);
@@ -712,8 +740,8 @@ describe("LGPD", () => {
     assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Pessoa do pedido rejeitado%'")), 0);
     // o antigo só sai quando o prazo de guarda é aplicado de verdade
     await gestor((tx) => tx.query("select public.aplicar_retencao(true)"));
-    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Outra pessoa%'")), 1);
+    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Pedido antigo sem contato%'")), 1);
     await gestor((tx) => tx.query("select public.aplicar_retencao(false)"));
-    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Outra pessoa%' or ip_hash = 'abc'")), 0);
+    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Pedido antigo sem contato%' or ip_hash = 'abc'")), 0);
   });
 });

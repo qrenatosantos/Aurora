@@ -35,24 +35,24 @@ export async function salvarVendedor(_anterior: EstadoAcao, formData: FormData):
     ? await supabase.from("vendedores").update(d).eq("id", id).select("id")
     : await supabase.from("vendedores").insert(d).select("id");
   if (error) return falha(mensagemErroBanco(error));
-  if (!data?.length) return falha("Vendedor não encontrado.");
+  if (!data?.length) return falha("Pessoa não encontrada.");
   revalidatePath("/equipe");
   revalidatePath("/", "layout");
-  return sucesso(id ? "Cadastro salvo." : "Vendedor cadastrado. Crie o login dele no Supabase com este mesmo e-mail.");
+  return sucesso(id ? "Cadastro salvo." : "Pessoa cadastrada. Crie o login dela no Supabase com este mesmo e-mail.");
 }
 
 export async function excluirVendedor(id: string): Promise<EstadoAcao> {
-  if (!ehUuid(id)) return falha("Vendedor inválido.");
+  if (!ehUuid(id)) return falha("Cadastro inválido.");
   const g = await exigirGestor();
   if ("erro" in g) return falha(g.erro);
   const supabase = await createClient();
   const { error } = await supabase.from("vendedores").delete().eq("id", id);
   if (error)
     return falha(
-      error.code === "23503" ? "Este vendedor tem negócios ou atividades. Desmarque “Ativo” em vez de excluir (o histórico continua)." : mensagemErroBanco(error),
+      error.code === "23503" ? "Esta pessoa tem negócios ou atividades. Desmarque “Ativo” em vez de excluir (o histórico continua)." : mensagemErroBanco(error),
     );
   revalidatePath("/equipe");
-  return sucesso("Vendedor excluído.");
+  return sucesso("Cadastro excluído.");
 }
 
 const esquemaEquipe = z.object({ id: idOpcional, nome: textoObrigatorio(2, 60, "Informe o nome da equipe.") });
@@ -79,5 +79,5 @@ export async function excluirEquipe(id: string): Promise<EstadoAcao> {
   const { error } = await supabase.from("equipes").delete().eq("id", id);
   if (error) return falha(mensagemErroBanco(error));
   revalidatePath("/equipe");
-  return sucesso("Equipe excluída (os vendedores ficaram sem equipe).");
+  return sucesso("Equipe excluída (as pessoas ficaram sem equipe).");
 }

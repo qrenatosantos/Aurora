@@ -41,7 +41,12 @@ export default async function PaginaNegocios({
   if (status) consulta = consulta.eq("status", status);
   if (funil) consulta = consulta.eq("funil_id", funil);
   if (vendedor) consulta = consulta.eq("vendedor_id", vendedor);
-  if (q) consulta = consulta.ilike("titulo", `%${q.replace(/[%_,()]/g, " ")}%`);
+  // busca pelo título ou pelo código do pedido (a "Ref." que vem na mensagem do WhatsApp)
+  if (q) {
+    const termo = q.replace(/[%_,()]/g, " ").trim();
+    const codigo = termo.replace(/^ref\.?\s*/i, "").toUpperCase();
+    consulta = /^[A-Z0-9]{4,10}$/.test(codigo) ? consulta.or(`titulo.ilike.%${termo}%,codigo.eq.${codigo}`) : consulta.ilike("titulo", `%${termo}%`);
+  }
   if (usaPeriodo) consulta = consulta.gte("created_at", `${de}T00:00:00-03:00`).lte("created_at", `${ate}T23:59:59.999-03:00`);
   const { data, count } = await consulta
     .order("created_at", { ascending: false })
@@ -73,7 +78,7 @@ export default async function PaginaNegocios({
         acao="/negocios"
         limpar
         campos={[
-          { tipo: "texto", nome: "q", rotulo: "Buscar", valor: q, placeholder: "Nome do negócio" },
+          { tipo: "texto", nome: "q", rotulo: "Buscar", valor: q, placeholder: "Nome ou Ref. do pedido" },
           {
             nome: "status",
             rotulo: "Situação",
