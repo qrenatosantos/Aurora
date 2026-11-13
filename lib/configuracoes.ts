@@ -58,6 +58,7 @@ export const CONFIG_PADRAO: Configuracoes = {
   proposta_fotos: {},
   retencao_leads_meses: 12,
   email_privacidade: null,
+  retencao_automatica: true,
   created_at: "",
   updated_at: "",
 };

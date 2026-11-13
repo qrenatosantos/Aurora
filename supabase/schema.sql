@@ -2296,6 +2296,8 @@ alter table public.configuracoes add column if not exists proposta_fotos   jsonb
 -- LGPD
 alter table public.configuracoes add column if not exists retencao_leads_meses integer not null default 12;
 alter table public.configuracoes add column if not exists email_privacidade    text;
+-- true = o banco apaga sozinho, toda semana, os leads fora do prazo de guarda (LGPD)
+alter table public.configuracoes add column if not exists retencao_automatica  boolean not null default true;
 
 alter table public.configuracoes drop constraint if exists configuracoes_responsavel_ck;
 alter table public.configuracoes add constraint configuracoes_responsavel_ck
@@ -5909,7 +5911,7 @@ grant execute on function public.anonimizar_contato(uuid, boolean) to authentica
 
 -- Prazo de guarda: contatos que nunca fecharam negócio e estão parados há mais tempo que o
 -- definido em Configurações (padrão 12 meses). p_simular = true só conta, não apaga.
-create or replace function public.aplicar_retencao(p_simular boolean default true)
+create or replace function privado.aplicar_retencao(p_simular boolean)
 returns integer
 language plpgsql
 security definer
@@ -5920,9 +5922,6 @@ declare
   v_n     integer := 0;
   r       record;
 begin
-  if not public.sou_gestor() then
-    raise exception 'Só o gestor aplica o prazo de guarda.';
-  end if;
   select c.retencao_leads_meses into v_meses from public.configuracoes c where c.unica limit 1;
   for r in
     select c.id from public.contatos c
@@ -5948,8 +5947,49 @@ begin
   return v_n;
 end;
 $$;
+
+-- Botão "Verificar contatos fora do prazo de guarda" (só o gestor).
+create or replace function public.aplicar_retencao(p_simular boolean default true)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.sou_gestor() then
+    raise exception 'Só o gestor aplica o prazo de guarda.';
+  end if;
+  return privado.aplicar_retencao(coalesce(p_simular, true));
+end;
+$$;
 revoke all on function public.aplicar_retencao(boolean) from public, anon;
 grant execute on function public.aplicar_retencao(boolean) to authenticated;
+
+-- Limpeza automática: toda segunda-feira o banco aplica o prazo de guarda sozinho, se a opção
+-- estiver ligada em Configurações ▸ Módulos e dados (pg_cron do Supabase; ignorado onde não existir).
+create or replace function privado.retencao_automatica()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not coalesce((select c.retencao_automatica from public.configuracoes c where c.unica limit 1), false) then
+    return 0;
+  end if;
+  perform set_config('app.ator', 'sistema', true);
+  return privado.aplicar_retencao(false);
+end;
+$$;
+
+do $$
+begin
+  create extension if not exists pg_cron;
+  perform cron.unschedule(jobid) from cron.job where jobname = 'aurora-retencao';
+  perform cron.schedule('aurora-retencao', '17 7 * * 1', 'select privado.retencao_automatica()');
+exception when others then
+  raise notice 'pg_cron indisponível: o prazo de guarda fica manual (Configurações ▸ Módulos e dados).';
+end $$;
 
 -- #####################################################################
 --   FIM DA PARTE DA AURORA

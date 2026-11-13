@@ -86,6 +86,16 @@ export function FormModulos({ config }: { config: Configuracoes }) {
             {(p) => <Entrada {...p} type="email" defaultValue={config.email_privacidade ?? ""} maxLength={160} />}
           </Campo>
         </div>
+        <label className="flex items-start gap-3 rounded-xl border border-borda p-3 text-sm">
+          <input type="checkbox" name="retencao_automatica" defaultChecked={config.retencao_automatica} className="mt-0.5 size-5 shrink-0 accent-[var(--marca)]" />
+          <span>
+            <strong>Apagar sozinho, toda semana, o que passou do prazo</strong>
+            <span className="block text-texto-2">
+              É o que a política de privacidade do site promete. Vale só para quem nunca fechou negócio e está parado há mais tempo que o prazo acima; clientes
+              que contrataram ficam. Desligado, a limpeza só acontece pelo botão abaixo.
+            </span>
+          </span>
+        </label>
         <Botao variante="secundario" carregando={aplicando} onClick={retencao}>
           Verificar contatos fora do prazo de guarda
         </Botao>

@@ -63,6 +63,7 @@ export type ConfiguracoesRow = {
   proposta_fotos: Record<string, string>;
   retencao_leads_meses: number;
   email_privacidade: string | null;
+  retencao_automatica: boolean;
   created_at: string;
   updated_at: string;
 };

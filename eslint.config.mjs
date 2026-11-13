@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Gerados pela publicação no Cloudflare:
     ".open-next/**",
     ".wrangler/**",
+    // Arquivo para o site institucional (outro projeto, JavaScript simples):
+    "integracao-site/**",
   ]),
 ]);
 

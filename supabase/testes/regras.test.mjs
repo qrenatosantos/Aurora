@@ -744,4 +744,27 @@ describe("LGPD", () => {
     await gestor((tx) => tx.query("select public.aplicar_retencao(false)"));
     assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Pedido antigo sem contato%' or ip_hash = 'abc'")), 0);
   });
+
+  test("limpeza automática semanal: respeita a opção e só apaga quem está fora do prazo", async () => {
+    const id = await banco(async (tx) => {
+      const c = await valor(tx, "insert into contatos (nome, telefone) values ('Lead Muito Antigo', '34911112222') returning id");
+      // sem os gatilhos, para conseguir "envelhecer" o cadastro (o banco sempre grava a data de hoje)
+      await tx.query("set local session_replication_role = replica");
+      await tx.query("update contatos set updated_at = now() - interval '3 years' where id = $1", [c]);
+      await tx.query("set local session_replication_role = origin");
+      await tx.query("insert into contatos (nome, telefone) values ('Lead Recente', '34933334444')");
+      await tx.query("update configuracoes set retencao_automatica = false");
+      return c;
+    });
+    assert.equal(await banco((tx) => valor(tx, "select privado.retencao_automatica()")), 0);
+    assert.equal(await banco((tx) => valor(tx, "select nome from contatos where id = $1", [id])), "Lead Muito Antigo");
+    await banco((tx) => tx.query("update configuracoes set retencao_automatica = true"));
+    assert.ok((await banco((tx) => valor(tx, "select privado.retencao_automatica()"))) >= 1);
+    assert.equal(await banco((tx) => valor(tx, "select nome from contatos where id = $1", [id])), "Contato removido");
+    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from contatos where nome = 'Lead Recente'")), 1);
+    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from contatos where nome = 'Vitória Lima'")), 1); // cliente que fechou fica
+    // ninguém de fora chama a limpeza
+    await assert.rejects(visitante((tx) => tx.query("select privado.retencao_automatica()")), /permission denied|não existe|does not exist/i);
+    await assert.rejects(vendedora((tx) => tx.query("select public.aplicar_retencao(false)")), /Só o gestor/);
+  });
 });
