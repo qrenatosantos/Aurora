@@ -11,6 +11,7 @@ import { obterConfiguracoes } from "@/lib/configuracoes";
 import { mapaNomes, opcoesCadastro } from "@/lib/dados";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
 import { createClient } from "@/lib/supabase/server";
+import { ModuloDesligado } from "@/components/comercial/modulo-desligado";
 
 export const metadata: Metadata = { title: "Empresas" };
 const POR_PAGINA = 48;
@@ -20,6 +21,8 @@ export default async function PaginaEmpresas({
 }: {
   searchParams: Promise<{ q?: string; responsavel?: string; pagina?: string }>;
 }) {
+  const [configModulo, perfilModulo] = await Promise.all([obterConfiguracoes(), obterPerfil()]);
+  if (!configModulo.mod_empresas) return <ModuloDesligado nome="Empresas" gestor={Boolean(ehGestor(perfilModulo.perfil))} />;
   const sp = await searchParams;
   const { perfil } = await obterPerfil();
   const [config, opcoes] = await Promise.all([obterConfiguracoes(), opcoesCadastro(perfil)]);

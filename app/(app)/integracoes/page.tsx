@@ -4,16 +4,16 @@
  */
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpen, ScrollText } from "lucide-react";
+import { BookOpen, MailWarning, ScrollText } from "lucide-react";
 import { SoGestor } from "@/components/comercial/so-gestor";
 import { CabecalhoPagina, Cartao, Selo } from "@/components/ui/cartao";
 import { nomeAviso } from "@/lib/aurora";
 import { ROTAS_AGENTE } from "@/lib/api/rotas-agente";
-import { formatarDataHora } from "@/lib/formatar";
+import { formatarDataHora, formatarTelefone } from "@/lib/formatar";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
 import { urlDoSite } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
-import type { AgenteLog, ChaveApi, EventoSaida, Webhook, WebhookEntrega } from "@/lib/tipos";
+import type { AgenteLog, ChaveApi, EventoSaida, LeadRecebidoRow, Webhook, WebhookEntrega } from "@/lib/tipos";
 import { Chaves, FilaAvisos, Webhooks } from "./integracoes";
 
 export const metadata: Metadata = { title: "Integrações" };
@@ -30,17 +30,24 @@ export default async function PaginaIntegracoes() {
   const { perfil } = await obterPerfil();
   if (!ehGestor(perfil)) return <SoGestor />;
   const supabase = await createClient();
-  const [chavesR, webhooksR, eventosR, logR, site] = await Promise.all([
+  const [chavesR, webhooksR, eventosR, logR, rejeitadosR, site] = await Promise.all([
     supabase.from("chaves_api").select("id, nome, prefixo, escopos, limite_por_minuto, ativa, ultimo_uso_em, revogada_em, created_at").order("created_at", { ascending: false }),
     supabase.from("webhooks").select("*").order("created_at"),
     supabase.from("eventos_saida").select("*").order("id", { ascending: false }).limit(25),
     supabase.from("agente_log").select("*").order("id", { ascending: false }).limit(40),
+    // pedidos que chegaram (site ou agente) e NÃO viraram negócio: ninguém pode ficar sem resposta
+    supabase.from("leads_recebidos").select("*").eq("status", "rejeitado").neq("dados", "{}").order("created_at", { ascending: false }).limit(15),
     urlDoSite(),
   ]);
   const chaves = (chavesR.data ?? []) as Omit<ChaveApi, "hash" | "criada_por" | "updated_at">[];
   const webhooks = (webhooksR.data ?? []) as Webhook[];
   const eventos = (eventosR.data ?? []) as EventoSaida[];
   const log = (logR.data ?? []) as AgenteLog[];
+  const rejeitados = ((rejeitadosR.data ?? []) as LeadRecebidoRow[]).map((l) => {
+    const d = (l.dados ?? {}) as Record<string, unknown>;
+    const texto = (k: string) => (typeof d[k] === "string" ? (d[k] as string) : "");
+    return { id: l.id, quando: l.created_at, origem: l.origem, motivo: l.motivo, nome: texto("nome"), telefone: texto("whatsapp") || texto("telefone") };
+  });
   const idsEventos = eventos.map((e) => e.id);
   const { data: entregasD } = idsEventos.length
     ? await supabase.from("webhook_entregas").select("*").in("evento_id", idsEventos)
@@ -69,6 +76,29 @@ export default async function PaginaIntegracoes() {
             Abrir OpenAPI
           </Link>
         </Cartao>
+
+        {rejeitados.length > 0 && (
+          <Cartao className="border-alerta-forte">
+            <h2 className="mb-1 flex items-center gap-2 text-base font-semibold">
+              <MailWarning className="size-5 text-alerta" aria-hidden /> Pedidos que não entraram no funil
+            </h2>
+            <p className="mb-3 text-sm text-texto-2">
+              Chegaram, mas o sistema não conseguiu registrar. Os dados ficaram guardados aqui para ninguém ficar sem resposta: cadastre o contato manualmente.
+            </p>
+            <ul className="divide-y divide-borda text-sm">
+              {rejeitados.map((l) => (
+                <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2">
+                  <span className="font-semibold">{l.nome || "Sem nome"}</span>
+                  {l.telefone && <span className="num">{formatarTelefone(l.telefone) || l.telefone}</span>}
+                  <span className="text-xs text-texto-2">
+                    {formatarDataHora(l.quando)} · {l.origem}
+                    {l.motivo ? ` · ${l.motivo}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Cartao>
+        )}
 
         <Chaves chaves={chaves} />
         <Webhooks webhooks={webhooks} />

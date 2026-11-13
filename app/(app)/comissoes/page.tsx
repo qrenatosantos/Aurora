@@ -17,10 +17,14 @@ import { ehGestor, obterPerfil } from "@/lib/perfil";
 import { createClient } from "@/lib/supabase/server";
 import type { Comissao } from "@/lib/tipos";
 import { Extrato } from "./extrato";
+import { ModuloDesligado } from "@/components/comercial/modulo-desligado";
+import { obterConfiguracoes } from "@/lib/configuracoes";
 
 export const metadata: Metadata = { title: "Comissões" };
 
 export default async function PaginaComissoes({ searchParams }: { searchParams: Promise<{ mes?: string; vendedor?: string; status?: string }> }) {
+  const [configModulo, perfilModulo] = await Promise.all([obterConfiguracoes(), obterPerfil()]);
+  if (!configModulo.mod_comissoes) return <ModuloDesligado nome="Comissões" gestor={Boolean(ehGestor(perfilModulo.perfil))} />;
   const sp = await searchParams;
   const competencia = mesValido(sp.mes) ? `${sp.mes}-01` : inicioMes(hojeISO());
   const [{ perfil }, vendedores] = await Promise.all([obterPerfil(), listarVendedores()]);

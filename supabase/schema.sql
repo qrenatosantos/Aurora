@@ -5825,7 +5825,9 @@ as $$
 declare
   v_negocios uuid[];
   v_mantidos integer;
+  v_tel      text;
 begin
+  select c.telefone into v_tel from public.contatos c where c.id = p_id;
   select coalesce(array_agg(n.id) filter (where n.status <> 'ganho' or p_incluir_fechados), '{}'),
          count(*) filter (where n.status = 'ganho' and not p_incluir_fechados)
     into v_negocios, v_mantidos
@@ -5837,6 +5839,12 @@ begin
   update public.eventos set nome = null, local = null, observacoes = null where negocio_id = any(v_negocios);
   update public.negocios set titulo = 'Negócio ' || coalesce(codigo, 'sem código'), observacoes = null where id = any(v_negocios);
   update public.leads_recebidos set dados = '{}'::jsonb where contato_id = p_id or negocio_id = any(v_negocios);
+  -- pedidos do site que não viraram contato (rejeitados), mas são do mesmo telefone
+  if v_tel is not null then
+    update public.leads_recebidos l set dados = '{}'::jsonb
+     where l.contato_id is null and l.dados <> '{}'::jsonb
+       and privado.telefone(coalesce(l.dados ->> 'whatsapp', l.dados ->> 'telefone')) = v_tel;
+  end if;
   update public.agente_log set pedido = null, resumo = null where negocio_id = any(v_negocios) or registro_id = p_id;
   update public.eventos_saida set dados = '{}'::jsonb where negocio_id = any(v_negocios);
   update public.auditoria set descricao = 'Dados removidos'
@@ -5904,6 +5912,12 @@ begin
       perform privado.anonimizar_contato(r.id, false);
     end if;
   end loop;
+  -- Pedidos recebidos que nunca viraram contato (rejeitados) também vencem no mesmo prazo.
+  if not coalesce(p_simular, true) then
+    update public.leads_recebidos l set dados = '{}'::jsonb, ip_hash = null
+     where l.contato_id is null and (l.dados <> '{}'::jsonb or l.ip_hash is not null)
+       and l.created_at < now() - make_interval(months => coalesce(v_meses, 12));
+  end if;
   return v_n;
 end;
 $$;

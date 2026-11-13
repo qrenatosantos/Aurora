@@ -692,4 +692,28 @@ describe("LGPD", () => {
     assert.equal(typeof n, "number");
     assert.equal(await banco((tx) => valor(tx, "select count(*)::int from contatos where nome like 'Pessoa %'")), 5);
   });
+
+  test("pedidos do site que não viraram contato também são limpos", async () => {
+    // um pedido rejeitado do mesmo telefone de um contato, e outro antigo, sem contato
+    const { id, telefone } = await banco(async (tx) => {
+      const { rows } = await tx.query(
+        "insert into contatos (nome, telefone) values ('Pessoa do pedido rejeitado', '34988887777') returning id, telefone",
+      );
+      await tx.query(
+        `insert into leads_recebidos (origem, dados, status, motivo) values
+           ('site', '{"nome":"Pessoa do pedido rejeitado","whatsapp":"(34) 98888-7777"}', 'rejeitado', 'teste'),
+           ('site', '{"nome":"Outra pessoa","whatsapp":"(34) 97777-6666"}', 'rejeitado', 'teste')`,
+      );
+      await tx.query("update leads_recebidos set created_at = now() - interval '3 years', ip_hash = 'abc' where dados ->> 'nome' = 'Outra pessoa'");
+      return rows[0];
+    });
+    assert.ok(telefone);
+    await gestor((tx) => tx.query("select public.anonimizar_contato($1)", [id]));
+    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Pessoa do pedido rejeitado%'")), 0);
+    // o antigo só sai quando o prazo de guarda é aplicado de verdade
+    await gestor((tx) => tx.query("select public.aplicar_retencao(true)"));
+    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Outra pessoa%'")), 1);
+    await gestor((tx) => tx.query("select public.aplicar_retencao(false)"));
+    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Outra pessoa%' or ip_hash = 'abc'")), 0);
+  });
 });

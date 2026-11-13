@@ -15,7 +15,7 @@ import type { Equipe as TEquipe, Vendedor } from "@/lib/tipos";
 import { useAcao } from "@/lib/use-acao";
 import { excluirEquipe, excluirVendedor, salvarEquipe, salvarVendedor } from "./actions";
 
-export function Equipe({ vendedores, equipes, meuId }: { vendedores: Vendedor[]; equipes: TEquipe[]; meuId: string | null }) {
+export function Equipe({ vendedores, equipes, meuId, mostrarEquipes }: { vendedores: Vendedor[]; equipes: TEquipe[]; meuId: string | null; mostrarEquipes: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const confirmar = useConfirmar();
@@ -43,12 +43,12 @@ export function Equipe({ vendedores, equipes, meuId }: { vendedores: Vendedor[];
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div className={mostrarEquipes ? "grid grid-cols-1 gap-4 lg:grid-cols-3" : ""}>
       <div className="lg:col-span-2">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold">Vendedores</h2>
+          <h2 className="text-base font-semibold">Pessoas</h2>
           <Botao onClick={() => setVend("novo")}>
-            <UserPlus className="size-4" aria-hidden /> Novo vendedor
+            <UserPlus className="size-4" aria-hidden /> Nova pessoa
           </Botao>
         </div>
         <ul className="divide-y divide-borda overflow-hidden rounded-2xl border border-borda bg-superficie">
@@ -61,19 +61,29 @@ export function Equipe({ vendedores, equipes, meuId }: { vendedores: Vendedor[];
                 <span className="flex flex-wrap items-center gap-1.5 font-semibold">
                   {v.nome}
                   {v.id === meuId && <span className="text-xs text-texto-2">(você)</span>}
-                  <Selo cor={v.papel === "gestor" ? "marca" : "neutro"}>{v.papel === "gestor" ? "Gestor" : "Vendedor"}</Selo>
-                  {!v.ativo && <Selo cor="perigo">Inativo</Selo>}
-                  {!v.user_id && v.ativo && <Selo cor="alerta">Ainda não entrou</Selo>}
+                  {v.tipo === "agente" ? (
+                    <Selo cor="info">Atendente automático</Selo>
+                  ) : (
+                    <>
+                      <Selo cor={v.papel === "gestor" ? "marca" : "neutro"}>{v.papel === "gestor" ? "Gestor" : "Atendente"}</Selo>
+                      {!v.ativo && <Selo cor="perigo">Inativo</Selo>}
+                      {!v.user_id && v.ativo && <Selo cor="alerta">Ainda não entrou</Selo>}
+                    </>
+                  )}
                 </span>
                 <span className="block truncate text-xs text-texto-2">
-                  {[v.email, formatarTelefone(v.telefone), v.equipe_id ? nomeEq.get(v.equipe_id) : null].filter(Boolean).join(" · ")}
+                  {v.tipo === "agente"
+                    ? "Não tem login: entra só pela API, com a chave criada em Integrações. Nunca aprova propostas."
+                    : [v.email, formatarTelefone(v.telefone), v.equipe_id ? nomeEq.get(v.equipe_id) : null].filter(Boolean).join(" · ")}
                 </span>
               </span>
-              <Botao variante="fantasma" aria-label={`Editar ${v.nome}`} onClick={() => setVend(v)}>
-                <Pencil className="size-4" aria-hidden />
-              </Botao>
-              {v.id !== meuId && (
-                <Botao variante="fantasma" className="text-perigo" aria-label={`Excluir ${v.nome}`} onClick={excluir(() => excluirVendedor(v.id), `Excluir ${v.nome}?`)}>
+              {v.tipo !== "agente" && (
+                <Botao variante="fantasma" aria-label={`Editar ${v.nome}`} onClick={() => setVend(v)}>
+                  <Pencil className="size-4" aria-hidden />
+                </Botao>
+              )}
+              {v.id !== meuId && v.tipo !== "agente" && (
+                <Botao variante="fantasma" className="!text-perigo" aria-label={`Excluir ${v.nome}`} onClick={excluir(() => excluirVendedor(v.id), `Excluir ${v.nome}?`)}>
                   <Trash2 className="size-4" aria-hidden />
                 </Botao>
               )}
@@ -81,6 +91,7 @@ export function Equipe({ vendedores, equipes, meuId }: { vendedores: Vendedor[];
           ))}
         </ul>
       </div>
+      {mostrarEquipes && (
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold">Equipes</h2>
@@ -101,7 +112,7 @@ export function Equipe({ vendedores, equipes, meuId }: { vendedores: Vendedor[];
                   <Botao variante="fantasma" aria-label={`Renomear ${e.nome}`} onClick={() => setEq(e)}>
                     <Pencil className="size-4" aria-hidden />
                   </Botao>
-                  <Botao variante="fantasma" className="text-perigo" aria-label={`Excluir ${e.nome}`} onClick={excluir(() => excluirEquipe(e.id), `Excluir a equipe ${e.nome}?`)}>
+                  <Botao variante="fantasma" className="!text-perigo" aria-label={`Excluir ${e.nome}`} onClick={excluir(() => excluirEquipe(e.id), `Excluir a equipe ${e.nome}?`)}>
                     <Trash2 className="size-4" aria-hidden />
                   </Botao>
                 </li>
@@ -110,8 +121,9 @@ export function Equipe({ vendedores, equipes, meuId }: { vendedores: Vendedor[];
           )}
         </Cartao>
       </div>
+      )}
 
-      {vend && <DialogoVendedor vendedor={vend === "novo" ? null : vend} equipes={equipes} aoFechar={fechar} />}
+      {vend && <DialogoVendedor vendedor={vend === "novo" ? null : vend} equipes={mostrarEquipes ? equipes : []} aoFechar={fechar} />}
       {eq && <DialogoEquipe equipe={eq === "nova" ? null : eq} aoFechar={fechar} />}
     </div>
   );
@@ -120,7 +132,7 @@ export function Equipe({ vendedores, equipes, meuId }: { vendedores: Vendedor[];
 function DialogoVendedor({ vendedor, equipes, aoFechar }: { vendedor: Vendedor | null; equipes: TEquipe[]; aoFechar: () => void }) {
   const { onSubmit, erros: e, pendente } = useAcao(salvarVendedor, { aoSucesso: aoFechar });
   return (
-    <Modal aberto aoFechar={aoFechar} titulo={vendedor ? "Editar vendedor" : "Novo vendedor"}>
+    <Modal aberto aoFechar={aoFechar} titulo={vendedor ? "Editar pessoa" : "Nova pessoa"}>
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         {vendedor && <input type="hidden" name="id" value={vendedor.id} />}
         <Campo rotulo="Nome" nome="nome" erro={e.nome}>
@@ -139,11 +151,12 @@ function DialogoVendedor({ vendedor, equipes, aoFechar }: { vendedor: Vendedor |
           <Campo rotulo="Papel" nome="papel" erro={e.papel}>
             {(p) => (
               <Selecao {...p} defaultValue={vendedor?.papel ?? "vendedor"}>
-                <option value="vendedor">Vendedor</option>
-                <option value="gestor">Gestor (administrador)</option>
+                <option value="vendedor">Atendente (não aprova propostas)</option>
+                <option value="gestor">Gestor (aprova propostas e administra)</option>
               </Selecao>
             )}
           </Campo>
+          {equipes.length > 0 && (
           <Campo rotulo="Equipe" nome="equipe_id" erro={e.equipe_id}>
             {(p) => (
               <Selecao {...p} defaultValue={vendedor?.equipe_id ?? ""}>
@@ -156,6 +169,7 @@ function DialogoVendedor({ vendedor, equipes, aoFechar }: { vendedor: Vendedor |
               </Selecao>
             )}
           </Campo>
+          )}
         </div>
         <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
           <input type="checkbox" name="ativo" defaultChecked={vendedor?.ativo ?? true} className="size-5 accent-[var(--marca)]" /> Ativo (pode entrar no

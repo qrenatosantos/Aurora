@@ -16,10 +16,14 @@ import { ehGestor, obterPerfil } from "@/lib/perfil";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { FormMetas } from "./form-metas";
+import { ModuloDesligado } from "@/components/comercial/modulo-desligado";
+import { obterConfiguracoes } from "@/lib/configuracoes";
 
 export const metadata: Metadata = { title: "Metas" };
 
 export default async function PaginaMetas({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
+  const [configModulo, perfilModulo] = await Promise.all([obterConfiguracoes(), obterPerfil()]);
+  if (!configModulo.mod_metas) return <ModuloDesligado nome="Metas" gestor={Boolean(ehGestor(perfilModulo.perfil))} />;
   const sp = await searchParams;
   const hoje = hojeISO();
   const competencia = mesValido(sp.mes) ? `${sp.mes}-01` : inicioMes(hoje);

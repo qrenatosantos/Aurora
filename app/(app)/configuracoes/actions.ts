@@ -116,6 +116,7 @@ export async function salvarModulos(_anterior: EstadoAcao, formData: FormData): 
       mod_funis: caixa,
       mod_metas: caixa,
       mod_comissoes: caixa,
+      mod_equipe: caixa,
       retencao_leads_meses: inteiro(1, 120, "De 1 a 120 meses."),
       email_privacidade: emailOpcional,
     })

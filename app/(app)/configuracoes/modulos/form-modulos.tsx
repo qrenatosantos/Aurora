@@ -18,6 +18,7 @@ const MODULOS = [
   { nome: "mod_funis", titulo: "Vários funis", texto: "Permite criar mais de um funil de vendas. Desligado, o sistema usa só o funil de eventos." },
   { nome: "mod_metas", titulo: "Metas", texto: "Metas mensais de vendas, com projeção." },
   { nome: "mod_comissoes", titulo: "Comissões", texto: "Cálculo e extrato de comissões por venda." },
+  { nome: "mod_equipe", titulo: "Equipes (grupos de pessoas)", texto: "Agrupa as pessoas em equipes, para metas e relatórios por equipe. Só faz sentido com mais gente vendendo." },
 ] as const;
 
 export function FormModulos({ config }: { config: Configuracoes }) {

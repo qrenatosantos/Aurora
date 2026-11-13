@@ -15,7 +15,7 @@ import { useAcao } from "@/lib/use-acao";
 
 type EtapaEd = { chave: string; id: string | null; nome: string; probabilidade: string; cor: string };
 
-export function EditorFunis({ funis, contagem }: { funis: FunilComEtapas[]; contagem: Record<string, number> }) {
+export function EditorFunis({ funis, contagem, variosFunis }: { funis: FunilComEtapas[]; contagem: Record<string, number>; variosFunis: boolean }) {
   const router = useRouter();
   const { onSubmit, erros: e, pendente } = useAcao(salvarFunil, {
     aoSucesso: (_r, form) => {
@@ -28,6 +28,7 @@ export function EditorFunis({ funis, contagem }: { funis: FunilComEtapas[]; cont
       {funis.map((f) => (
         <Funil key={f.id + f.updated_at + f.etapas.map((x) => x.updated_at).join()} funil={f} contagem={contagem} />
       ))}
+      {variosFunis && (
       <Cartao>
         <form onSubmit={onSubmit} noValidate className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <Campo rotulo="Novo funil" nome="nome" erro={e.nome} className="flex-1">
@@ -38,6 +39,7 @@ export function EditorFunis({ funis, contagem }: { funis: FunilComEtapas[]; cont
           </Botao>
         </form>
       </Cartao>
+      )}
     </div>
   );
 }

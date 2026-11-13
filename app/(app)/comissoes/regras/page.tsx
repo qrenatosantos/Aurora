@@ -8,10 +8,14 @@ import { ehGestor, obterPerfil } from "@/lib/perfil";
 import { createClient } from "@/lib/supabase/server";
 import type { RegraComissao } from "@/lib/tipos";
 import { Regras } from "./regras";
+import { ModuloDesligado } from "@/components/comercial/modulo-desligado";
+import { obterConfiguracoes } from "@/lib/configuracoes";
 
 export const metadata: Metadata = { title: "Regras de comissão" };
 
 export default async function PaginaRegras() {
+  const [configModulo, perfilModulo] = await Promise.all([obterConfiguracoes(), obterPerfil()]);
+  if (!configModulo.mod_comissoes) return <ModuloDesligado nome="Comissões" gestor={Boolean(ehGestor(perfilModulo.perfil))} />;
   const supabase = await createClient();
   const [{ perfil }, vendedores, produtos, { data }] = await Promise.all([
     obterPerfil(),
