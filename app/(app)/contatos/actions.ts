@@ -9,7 +9,7 @@ import { z } from "zod";
 import { type EstadoAcao, errosDoZod, falha, lerFormulario, mensagemErroBanco, sucesso } from "@/lib/acoes";
 import { lerTags } from "@/lib/comercial";
 import { somenteDigitos } from "@/lib/formatar";
-import { exigirPerfil } from "@/lib/perfil";
+import { exigirGestor, exigirPerfil } from "@/lib/perfil";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoImportacao } from "@/lib/tipos";
 import { ehUuid, emailOpcional, idOpcional, telefoneOpcional, textoObrigatorio, textoOpcional } from "@/lib/validacao";
@@ -201,4 +201,36 @@ export async function importarLeads(entrada: unknown): Promise<EstadoAcao & { re
     ),
     resultado,
   };
+}
+
+// ============================== LGPD (só o gestor; o banco confere) ==============================
+
+/** Devolve TUDO o que o sistema guarda sobre o contato (pedido de acesso do titular), em JSON. */
+export async function exportarContato(id: string): Promise<EstadoAcao> {
+  if (!ehUuid(id)) return falha("Contato inválido.");
+  const g = await exigirGestor();
+  if ("erro" in g) return falha(g.erro);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("exportar_contato", { p_id: id });
+  if (error) return falha(mensagemErroBanco(error));
+  return sucesso("Arquivo gerado.", { json: JSON.stringify(data, null, 2) });
+}
+
+/** Apaga os dados pessoais do contato (pedido de eliminação). Negócios fechados só saem se pedido. */
+export async function apagarDadosContato(id: string, incluirFechados: boolean): Promise<EstadoAcao> {
+  if (!ehUuid(id)) return falha("Contato inválido.");
+  const g = await exigirGestor();
+  if ("erro" in g) return falha(g.erro);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("anonimizar_contato", { p_id: id, p_incluir_fechados: incluirFechados });
+  if (error) return falha(mensagemErroBanco(error));
+  revalidatePath("/contatos");
+  revalidatePath(`/contatos/${id}`);
+  revalidatePath("/negocios");
+  const r = (data ?? {}) as { negocios_mantidos?: number; contato_anonimizado?: boolean };
+  return sucesso(
+    r.contato_anonimizado
+      ? "Dados pessoais apagados."
+      : `Conversas e dados dos negócios em aberto ou perdidos foram apagados. ${r.negocios_mantidos} negócio(s) fechado(s) foram mantidos como registro do contrato.`,
+  );
 }

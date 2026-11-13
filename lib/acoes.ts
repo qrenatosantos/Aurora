@@ -50,7 +50,7 @@ const REGRAS_BANCO: [string, string][] = [
   ["negocios_ganho_valor_ck", "Para marcar como ganho, o negócio precisa ter valor maior que zero."],
   ["negocios_perda_motivo_ck", "Informe o motivo da perda."],
   ["negocios_etapa_fk", "A etapa escolhida não pertence a este funil (ou ainda tem negócios nela)."],
-  ["propostas_aprovacao_ck", "Há desconto acima do limite: peça a aprovação do gestor antes de enviar."],
+  ["propostas_aprovacao_ck", "A proposta só pode ser enviada depois de aprovada pelo gestor."],
   ["propostas_uma_aceita_uidx", "Este negócio já tem uma proposta aceita."],
   ["metas_vendedor_uidx", "Já existe meta para este vendedor neste mês."],
   ["metas_equipe_uidx", "Já existe meta para esta equipe neste mês."],

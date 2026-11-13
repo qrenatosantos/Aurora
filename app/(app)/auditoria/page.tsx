@@ -1,7 +1,8 @@
 /**
  * AUDITORIA: quem criou, alterou ou excluiu o quê, e quando.
  * Preenchida SÓ pelo banco (gatilhos) — ninguém edita nem apaga pelo app.
- * O gestor vê tudo; os vendedores, as próprias ações.
+ * O gestor vê tudo; os demais, as próprias ações. Mostra também QUEM fez: uma pessoa,
+ * o agente (pela API), o cliente (aceite pelo link) ou o site (pedido de proposta).
  */
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -34,19 +35,36 @@ const NOME_TABELA: Record<string, string> = {
   motivos_perda: "Motivo de perda",
   origens: "Origem",
   modelos_mensagem: "Modelo de mensagem",
+  eventos: "Evento",
+  bloqueios_agenda: "Bloqueio de agenda",
+  insumos: "Insumo",
+  drinks: "Drink",
+  pacotes: "Pacote",
+  calculadora: "Regras de preço",
+  webhooks: "Aviso (webhook)",
+  chaves_api: "Chave de acesso",
 };
+const QUEM = {
+  humano: { nome: "Pessoas da equipe", selo: null },
+  agente: { nome: "Agente (API)", selo: "agente" },
+  cliente: { nome: "Cliente (link da proposta)", selo: "cliente" },
+  site: { nome: "Site (pedido de proposta)", selo: "site" },
+  sistema: { nome: "Sistema (automático)", selo: "automático" },
+} as const;
+type Quem = keyof typeof QUEM;
 const COR_ACAO = { criou: "ok", alterou: "info", excluiu: "perigo" } as const;
 
 export default async function PaginaAuditoria({
   searchParams,
 }: {
-  searchParams: Promise<{ de?: string; ate?: string; tabela?: string; pagina?: string }>;
+  searchParams: Promise<{ de?: string; ate?: string; tabela?: string; autor?: string; pagina?: string }>;
 }) {
   const sp = await searchParams;
   const hoje = hojeISO();
   const de = dataValida(sp.de) ? sp.de : somarDias(hoje, -30);
   const ate = dataValida(sp.ate) ? sp.ate : hoje;
   const tabela = sp.tabela && NOME_TABELA[sp.tabela] ? sp.tabela : "";
+  const autor = sp.autor && sp.autor in QUEM ? (sp.autor as Quem) : "";
   const pagina = Math.max(1, Number(sp.pagina) || 1);
   const POR_PAGINA = 100;
 
@@ -59,16 +77,17 @@ export default async function PaginaAuditoria({
     .order("created_at", { ascending: false })
     .range((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA - 1);
   if (tabela) consulta = consulta.eq("tabela", tabela);
+  if (autor) consulta = consulta.eq("ator_tipo", autor);
   const [{ perfil }, { data: registros, count }] = await Promise.all([obterPerfil(), consulta]);
   const total = count ?? 0;
   const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
-  const link = (n: number) => `/auditoria?${new URLSearchParams({ de, ate, tabela, pagina: String(n) })}`;
+  const link = (n: number) => `/auditoria?${new URLSearchParams({ de, ate, tabela, autor, pagina: String(n) })}`;
 
   return (
     <>
       <CabecalhoPagina
         titulo="Auditoria"
-        descricao={ehGestor(perfil) ? "Registro automático das alterações importantes (negócios, propostas, comissões, metas, cadastros)." : "Suas ações registradas."}
+        descricao={ehGestor(perfil) ? "Registro automático de tudo o que muda (negócios, propostas, preços, cadastros) e de quem mudou: pessoas, agente, cliente ou site." : "Suas ações registradas."}
       />
       <Filtros
         acao="/auditoria"
@@ -76,6 +95,7 @@ export default async function PaginaAuditoria({
           { tipo: "data", nome: "de", rotulo: "De", valor: de },
           { tipo: "data", nome: "ate", rotulo: "Até", valor: ate },
           { nome: "tabela", rotulo: "O quê", valor: tabela, todos: "Tudo", opcoes: Object.entries(NOME_TABELA).map(([id, nome]) => ({ id, nome })) },
+          { nome: "autor", rotulo: "Quem fez", valor: autor, todos: "Todos", opcoes: Object.entries(QUEM).map(([id, q]) => ({ id, nome: q.nome })) },
         ]}
       />
       {!registros?.length ? (
@@ -88,7 +108,8 @@ export default async function PaginaAuditoria({
               <li key={r.id} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
                 <span className="w-36 shrink-0 text-xs text-texto-2">{formatarDataHora(r.created_at)}</span>
                 <span className="min-w-0 flex-1 text-sm">
-                  <strong className="text-texto">{r.autor}</strong> <Selo cor={COR_ACAO[r.acao]}>{r.acao}</Selo>{" "}
+                  <strong className="text-texto">{r.autor}</strong> {QUEM[r.ator_tipo as Quem]?.selo && <Selo cor="marca">{QUEM[r.ator_tipo as Quem].selo}</Selo>}{" "}
+                  <Selo cor={COR_ACAO[r.acao]}>{r.acao}</Selo>{" "}
                   <span className="text-texto">{NOME_TABELA[r.tabela] ?? r.tabela}</span>
                   {r.descricao && <span className="text-texto-2"> &quot;{r.descricao}&quot;</span>}
                   {r.campos?.length ? <span className="text-texto-2"> ({r.campos.join(", ")})</span> : null}

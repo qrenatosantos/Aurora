@@ -13,6 +13,7 @@ import { formatarData, formatarTelefone, hojeISO } from "@/lib/formatar";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
 import { createClient } from "@/lib/supabase/server";
 import type { Atividade, Contato } from "@/lib/tipos";
+import { Privacidade } from "./privacidade";
 
 export const metadata: Metadata = { title: "Contato" };
 
@@ -124,8 +125,9 @@ export default async function PaginaContato({ params }: { params: Promise<{ id: 
             />
           </Cartao>
         </div>
-        <Cartao>
-          <h2 className="mb-2 text-base font-semibold">Dados</h2>
+        <div className="space-y-4">
+          <Cartao>
+            <h2 className="mb-2 text-base font-semibold">Dados</h2>
           <ul className="space-y-2 text-sm">
             {contato.telefone && (
               <li>
@@ -144,7 +146,9 @@ export default async function PaginaContato({ params }: { params: Promise<{ id: 
             <li className="text-texto-2">Cadastrado em {formatarData(contato.created_at)}</li>
           </ul>
           {contato.observacoes && <p className="mt-3 text-sm whitespace-pre-line">{contato.observacoes}</p>}
-        </Cartao>
+          </Cartao>
+          {gestor && <Privacidade id={contato.id} nome={contato.nome} temFechados={negocios.some((n) => n.status === "ganho")} />}
+        </div>
       </div>
     </>
   );
