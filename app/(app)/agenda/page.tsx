@@ -1,5 +1,6 @@
 /**
- * AGENDA do vendedor: atrasadas, hoje, próximas e concluídas (últimos 30 dias).
+ * TAREFAS (follow-ups): atrasadas, hoje, próximas e concluídas (últimos 30 dias).
+ * (A agenda de EVENTOS, com as datas das festas, fica em /eventos.)
  * O gestor (ou com "vendedores veem tudo") filtra por vendedor.
  */
 import type { Metadata } from "next";
@@ -17,7 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Atividade } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Agenda" };
+export const metadata: Metadata = { title: "Tarefas" };
 
 const ABAS = [
   { id: "atrasadas", nome: "Atrasadas" },
@@ -74,7 +75,7 @@ export default async function PaginaAgenda({ searchParams }: { searchParams: Pro
   return (
     <>
       <CabecalhoPagina
-        titulo="Agenda"
+        titulo="Tarefas"
         descricao="Ligações, reuniões, visitas e tarefas. Toque no círculo para concluir."
         acoes={
           <BotaoAtividade
