@@ -97,7 +97,7 @@ export default async function PaginaEventos({ searchParams }: { searchParams: Pr
                 <ChevronLeft className="size-5" aria-hidden />
               </Link>
               <div className="text-center">
-                <h2 className="text-xl font-semibold capitalize">{mesPorExtenso(inicio)}</h2>
+                <h2 className="text-xl font-semibold first-letter:uppercase">{mesPorExtenso(inicio)}</h2>
                 <p className="text-xs text-texto-2">
                   {resumo.confirmadas} confirmada(s) · {resumo.reservadas} reservada(s) · {resumo.consulta} em consulta
                 </p>

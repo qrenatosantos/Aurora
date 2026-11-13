@@ -5,7 +5,7 @@
  *   const marca = await obterMarca();            // de "@/lib/marca-servidor"
  *   <LogoNegocio nome={marca.nome} logoUrl={marca.logoUrl} tamanho="lg" />
  *
- * Sem logo enviada na Personalização, mostra o emblema da Aurora (public/aurora) sobre o azul-marinho.
+ * Sem logo enviada na Personalização, mostra o ícone da Aurora (public/aurora/favicon.svg).
  * Funciona em Server e Client Components (não usa hooks).
  */
 import { cn } from "@/lib/utils";
@@ -46,18 +46,12 @@ export function LogoNegocio({
     );
   }
   return (
-    <span
-      role={decorativa ? undefined : "img"}
-      aria-label={decorativa ? undefined : `Logo de ${nome}`}
-      aria-hidden={decorativa || undefined}
-      className={cn(
-        classes,
-        "grid place-items-center overflow-hidden bg-[#021938] p-[12%] [print-color-adjust:exact]",
-      )}
+    // eslint-disable-next-line @next/next/no-img-element -- SVG local (public/aurora), sem otimização
+    <img
+      src="/aurora/favicon.svg"
+      alt={decorativa ? "" : `Logo de ${nome}`}
+      className={cn(classes, "object-contain [print-color-adjust:exact]")}
       data-logo-negocio=""
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- SVG local, sem otimização */}
-      <img src="/aurora/aurora-emblema.svg" alt="" className="size-full object-contain" />
-    </span>
+    />
   );
 }
