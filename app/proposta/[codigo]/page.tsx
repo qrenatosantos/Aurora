@@ -41,7 +41,7 @@ export default async function PropostaPublica({ params }: { params: Promise<{ co
 
   return (
     <main className="min-h-dvh bg-fundo px-3 py-5 sm:px-6 print:p-0">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-6xl print:mx-0 print:max-w-none">
         <header className="mb-4 flex items-center gap-3 nao-imprimir">
           <LogoNegocio nome={empresa.nome} logoUrl={marca.logoUrl} />
           <div className="min-w-0 flex-1">

@@ -13,6 +13,8 @@ export const ROTAS_PUBLICAS: string[] = [
   "/auth", // /auth/confirmar recebe o link do e-mail de recuperação
   "/icone", // ícone da aba (favicon) com as iniciais do negócio — aparece também no login
   "/proposta", // LINK PÚBLICO da proposta: /proposta/<código> (o cliente vê e aceita sem login)
+  "/api/v1", // API DO AGENTE: protegida por chave própria (Authorization: Bearer aur_...), conferida no banco
+  "/api/publico", // entrada de leads do site (POST /api/publico/leads), validada e limitada no banco
 ];
 
 /** Para onde o usuário vai depois de entrar (e ao abrir /login já logado). */
