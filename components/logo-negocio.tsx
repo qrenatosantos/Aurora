@@ -5,10 +5,9 @@
  *   const marca = await obterMarca();            // de "@/lib/marca-servidor"
  *   <LogoNegocio nome={marca.nome} logoUrl={marca.logoUrl} tamanho="lg" />
  *
- * Sem logo enviada, mostra as iniciais do nome sobre a cor da marca.
+ * Sem logo enviada na Personalização, mostra o emblema da Aurora (public/aurora) sobre o azul-marinho.
  * Funciona em Server e Client Components (não usa hooks).
  */
-import { iniciais } from "@/lib/formatar";
 import { cn } from "@/lib/utils";
 
 const TAMANHOS = {
@@ -53,11 +52,12 @@ export function LogoNegocio({
       aria-hidden={decorativa || undefined}
       className={cn(
         classes,
-        "grid place-items-center bg-marca font-bold text-marca-texto [print-color-adjust:exact]",
+        "grid place-items-center overflow-hidden bg-[#021938] p-[12%] [print-color-adjust:exact]",
       )}
       data-logo-negocio=""
     >
-      {iniciais(nome)}
+      {/* eslint-disable-next-line @next/next/no-img-element -- SVG local, sem otimização */}
+      <img src="/aurora/aurora-emblema.svg" alt="" className="size-full object-contain" />
     </span>
   );
 }

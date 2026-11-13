@@ -16,8 +16,8 @@ import { supabaseConfigurado } from "@/lib/supabase/env";
  */
 export async function generateMetadata(): Promise<Metadata> {
   const marca = await obterMarca();
-  // Sem logo: /icone desenha as iniciais na cor da marca (o ?v= muda quando a marca muda).
-  const icone = marca.logoUrl ?? `/icone?v=${encodeURIComponent(`${marca.corPrimaria}-${marca.nome}`)}`;
+  // Sem logo enviada na Personalização: usa o ícone da Aurora (public/aurora).
+  const icone = marca.logoUrl ?? "/aurora/favicon.svg";
   return {
     title: { default: marca.nome, template: `%s · ${marca.nome}` },
     description: marca.subtitulo ?? SUBTITULO_PADRAO_LOGIN,
@@ -29,8 +29,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f6fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d0f17" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f2e8" },
+    { media: "(prefers-color-scheme: dark)", color: "#01112a" },
   ],
 };
 

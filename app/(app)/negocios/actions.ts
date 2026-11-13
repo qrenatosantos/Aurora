@@ -31,7 +31,7 @@ function revalidarNegocio(id?: string) {
 
 const esquema = z.object({
   id: idOpcional,
-  titulo: textoObrigatorio(2, 120, "Dê um nome ao negócio (ex.: Notebooks para a filial)."),
+  titulo: textoObrigatorio(2, 120, "Dê um nome ao negócio (ex.: Casamento · Ana Paula)."),
   funil_id: idObrigatorio("Escolha o funil."),
   etapa_id: idObrigatorio("Escolha a etapa."),
   vendedor_id: idOpcional,
@@ -48,6 +48,12 @@ const esquema = z.object({
     .optional()
     .transform((v) => lerTags(v)),
   observacoes: textoOpcional(4000),
+  // só na criação: dados mínimos do evento (o resto fica no cartão "Evento" do negócio)
+  evento_tipo: z
+    .enum(["", "casamento", "15_anos", "aniversario", "formatura", "empresa", "outro"])
+    .optional()
+    .transform((v) => (v ? v : null)),
+  evento_data: dataOpcional,
 });
 
 /** Criar ou editar negócio (com cadastro rápido de contato/empresa). */
@@ -131,9 +137,14 @@ export async function salvarNegocio(_anterior: EstadoAcao, formData: FormData): 
     .select("id")
     .single();
   if (error) return falha(mensagemErroBanco(error));
+  const { error: erroEvento } = await supabase
+    .from("eventos")
+    .upsert({ negocio_id: data.id, tipo: d.evento_tipo, data: d.evento_data }, { onConflict: "negocio_id" });
+  if (erroEvento) console.error("[evento]", erroEvento.message);
   revalidarNegocio();
+  revalidatePath("/eventos");
   if (contato_id) revalidatePath(`/contatos/${contato_id}`);
-  return sucesso("Negócio criado.", { id: data.id });
+  return sucesso("Negócio criado. Complete os dados do evento.", { id: data.id });
 }
 
 /** Arrastar no funil / escolher etapa (o histórico é gravado pelo banco). */
@@ -162,7 +173,7 @@ export async function ganharNegocio(id: string): Promise<EstadoAcao> {
   revalidarNegocio(id);
   revalidatePath("/comissoes");
   revalidatePath("/metas");
-  return sucesso("Parabéns! Negócio ganho. A comissão já foi calculada.");
+  return sucesso("Parabéns! Negócio fechado. A data foi confirmada na agenda.");
 }
 
 const esquemaPerda = z.object({

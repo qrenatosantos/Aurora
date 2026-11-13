@@ -1,25 +1,27 @@
 /**
- * NEGÓCIO: etapas, ganho/perda, produtos, atividades (registro rápido e agenda),
- * propostas, histórico de etapas (tempo em cada uma) e comissão.
+ * NEGÓCIO: etapas, ganho/perda, dados do evento (com aviso de agenda), atendimento
+ * (agente ou humano) com a conversa, tarefas, propostas e histórico de etapas.
  */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Building2, CalendarDays, FileText, History, Percent, User } from "lucide-react";
+import { ArrowLeft, Bot, Building2, CalendarDays, FileText, History, Percent, User, UserRound } from "lucide-react";
 import { BotaoMensagem } from "@/components/comercial/botao-mensagem";
 import { ListaAtividades } from "@/components/comercial/lista-atividades";
 import { Cartao, Selo } from "@/components/ui/cartao";
 import { STATUS_NEGOCIO, STATUS_PROPOSTA, duracaoLegivel, moedaInteira, pctNum } from "@/lib/comercial";
 import { obterConfiguracoes } from "@/lib/configuracoes";
-import { agoraServidor, listarModelos, listarMotivosPerda, listarProdutos, opcoesNegocio } from "@/lib/dados";
+import { ATENDIMENTO } from "@/lib/aurora";
+import { agoraServidor, listarModelos, listarMotivosPerda, listarPacotes, opcoesNegocio } from "@/lib/dados";
 import { formatarData, formatarDataHora, formatarMoeda, formatarTelefone, hojeISO } from "@/lib/formatar";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
 import { urlDoSite } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
-import type { Atividade, Comissao, HistoricoEtapa, NegocioProduto, Proposta } from "@/lib/tipos";
+import type { Atividade, Comissao, Disponibilidade, Evento, HistoricoEtapa, Mensagem, NegocioProduto, Proposta, Transferencia } from "@/lib/tipos";
 import { AcoesNegocio, BarraEtapas } from "./acoes-negocio";
+import { AtendimentoNegocio } from "./atendimento";
 import { BotaoNovaProposta } from "./botao-nova-proposta";
-import { ProdutosNegocio } from "./produtos-negocio";
+import { CartaoEvento } from "./cartao-evento";
 
 export const metadata: Metadata = { title: "Negócio" };
 
@@ -34,12 +36,12 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
   const gestor = ehGestor(perfil);
   const pode = gestor || negocio.vendedor_id === perfil?.id;
 
-  const [config, opcoes, motivos, produtos, modelos, itensR, atividadesR, historicoR, propostasR, comissaoR, contatoR, empresaR] =
+  const [config, opcoes, motivos, pacotes, modelos, itensR, atividadesR, historicoR, propostasR, comissaoR, contatoR, empresaR, eventoR, mensagensR, transferenciasR] =
     await Promise.all([
       obterConfiguracoes(),
       opcoesNegocio(perfil),
       listarMotivosPerda(),
-      listarProdutos(),
+      listarPacotes(),
       listarModelos(),
       supabase.from("negocio_produtos").select("*").eq("negocio_id", id).order("ordem"),
       supabase.from("atividades").select("*").eq("negocio_id", id).order("quando", { ascending: false }).limit(200),
@@ -52,7 +54,23 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
       negocio.empresa_id
         ? supabase.from("empresas").select("id, nome, cidade, uf").eq("id", negocio.empresa_id).maybeSingle()
         : Promise.resolve({ data: null }),
+      supabase.from("eventos").select("*").eq("negocio_id", id).maybeSingle(),
+      supabase.from("mensagens").select("*").eq("negocio_id", id).order("enviada_em", { ascending: false }).limit(300),
+      supabase.from("transferencias").select("*").eq("negocio_id", id).order("created_at", { ascending: false }).limit(50),
     ]);
+  const evento = eventoR.data as Evento | null;
+  const mensagens = ((mensagensR.data ?? []) as Mensagem[]).slice().reverse();
+  const transferencias = (transferenciasR.data ?? []) as Transferencia[];
+  let disponibilidade: Disponibilidade | null = null;
+  if (evento?.data && negocio.status !== "perdido") {
+    const { data: disp } = await supabase.rpc("disponibilidade_data", {
+      p_data: evento.data,
+      p_hora: evento.hora_inicio,
+      p_duracao: evento.duracao_horas,
+      p_ignorar: negocio.id,
+    });
+    disponibilidade = (disp as unknown as Disponibilidade | null) ?? null;
+  }
 
   const itens = (itensR.data ?? []) as NegocioProduto[];
   const atividades = (atividadesR.data ?? []) as Atividade[];
@@ -75,6 +93,7 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
   const feitas = atividades.filter((a) => a.concluida);
   const st = STATUS_NEGOCIO[negocio.status];
   const propostaAtual = propostas.find((p) => p.status === "enviada");
+  const at = ATENDIMENTO[negocio.atendimento];
   const origemSite = await urlDoSite();
 
   // tempo total por etapa (soma de todas as passagens)
@@ -103,7 +122,14 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
         <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <Selo cor={st.cor}>{st.nome}</Selo>
-            {funil && <span className="text-xs font-semibold text-texto-2">{funil.nome}</span>}
+            {negocio.status === "aberto" && (
+              <Selo cor={at.cor}>
+                {negocio.atendimento === "agente" ? <Bot className="mr-1 size-3.5" aria-hidden /> : <UserRound className="mr-1 size-3.5" aria-hidden />}
+                Atendimento: {at.nome}
+              </Selo>
+            )}
+            {negocio.codigo && <span className="num text-xs font-semibold text-texto-2">Pedido {negocio.codigo}</span>}
+            {funil && config.mod_funis && <span className="text-xs font-semibold text-texto-2">{funil.nome}</span>}
             {negocio.tags.map((t) => (
               <Selo key={t} cor="marca">
                 {t}
@@ -124,7 +150,7 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
                 {contato.cargo ? ` (${contato.cargo})` : ""}
               </Link>
             )}
-            <span>Vendedor: {vendedor}</span>
+            <span>Responsável: {vendedor}</span>
             {negocio.previsao_fechamento && negocio.status === "aberto" && (
               <span className={negocio.previsao_fechamento < hoje ? "font-semibold text-perigo" : undefined}>
                 <CalendarDays className="mr-1 inline size-4" aria-hidden />
@@ -172,8 +198,29 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
+          <CartaoEvento
+            key={evento?.updated_at ?? "novo"}
+            negocioId={negocio.id}
+            evento={evento}
+            pacotes={pacotes.filter((p) => p.ativo || p.id === evento?.pacote_id).map((p) => ({ id: p.id, nome: p.nome }))}
+            disponibilidade={disponibilidade}
+            pode={pode}
+            cidadePadrao={config.cidade}
+            ufPadrao={config.uf}
+          />
+
+          <AtendimentoNegocio
+            negocioId={negocio.id}
+            atendimento={negocio.atendimento}
+            desde={negocio.atendimento_desde}
+            aberto={negocio.status === "aberto"}
+            pode={pode}
+            mensagens={mensagens}
+            transferencias={transferencias}
+          />
+
           <Cartao>
-            <h2 className="mb-3 text-base font-semibold">Próximas atividades</h2>
+            <h2 className="mb-3 text-base font-semibold">Próximas tarefas</h2>
             <ListaAtividades
               atividades={pendentes}
               agora={agora}
@@ -181,20 +228,7 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
               meuId={perfil?.id ?? null}
               gestor={gestor}
               vendedores={opcoes.vendedores}
-              vazio={negocio.status === "aberto" ? "Nenhuma atividade agendada. Agende o próximo passo para o negócio não esfriar." : "Nada pendente."}
-            />
-          </Cartao>
-
-          <Cartao>
-            <h2 className="mb-3 text-base font-semibold">Produtos e serviços</h2>
-            <ProdutosNegocio
-              key={itens.map((i) => i.id).join(",")}
-              negocioId={negocio.id}
-              itens={itens}
-              produtos={produtos}
-              pode={pode}
-              gestor={gestor}
-              descontoAvulso={Number(config.desconto_max_avulso)}
+              vazio={negocio.status === "aberto" ? "Nenhuma tarefa agendada. Agende o próximo passo para o negócio não esfriar." : "Nada pendente."}
             />
           </Cartao>
 
@@ -206,7 +240,9 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
               {pode && <BotaoNovaProposta negocioId={negocio.id} variante="secundario" />}
             </div>
             {propostas.length === 0 ? (
-              <p className="text-sm text-texto-2">Nenhuma proposta ainda. Ela é montada com os produtos do negócio.</p>
+              <p className="text-sm text-texto-2">
+                Nenhuma proposta ainda. Ela é montada com os dados do evento e o cardápio do pacote; preencha o evento antes.
+              </p>
             ) : (
               <ul className="divide-y divide-borda">
                 {propostas.map((p) => (
@@ -284,7 +320,7 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
             </ol>
           </Cartao>
 
-          {comissao && (
+          {comissao && config.mod_comissoes && (
             <Cartao>
               <h2 className="mb-2 flex items-center gap-2 text-base font-semibold">
                 <Percent className="size-5 text-marca-forte" aria-hidden /> Comissão

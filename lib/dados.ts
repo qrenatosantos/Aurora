@@ -6,7 +6,8 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { todasAsLinhas } from "@/lib/paginar";
-import type { Equipe, Etapa, Funil, ModeloMensagem, MotivoPerda, Origem, Produto, Vendedor } from "@/lib/tipos";
+import { obterConfiguracoes } from "@/lib/configuracoes";
+import type { Drink, Equipe, Etapa, Funil, ModeloMensagem, MotivoPerda, Origem, Pacote, Produto, Vendedor } from "@/lib/tipos";
 
 function log(onde: string, error: { message: string } | null) {
   if (error) console.error(`[${onde}]`, error.message);
@@ -62,6 +63,22 @@ export const listarProdutos = cache(async () => {
   return (data ?? []) as Produto[];
 });
 
+/** Pacotes do catálogo (em ordem). */
+export const listarPacotes = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("pacotes").select("*").order("ordem").order("nome");
+  log("pacotes", error);
+  return (data ?? []) as Pacote[];
+});
+
+/** Drinks do catálogo (em ordem). */
+export const listarDrinks = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("drinks").select("*").order("ordem").order("nome");
+  log("drinks", error);
+  return (data ?? []) as Drink[];
+});
+
 export const listarModelos = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase.from("modelos_mensagem").select("*").order("ordem").order("titulo");
@@ -101,7 +118,8 @@ export async function nomesClientes(ids: { contatos: (string | null)[]; empresas
 /** Opções do formulário de negócio (funis, contatos, empresas, origens, vendedores). */
 export async function opcoesNegocio(perfil: Vendedor | null) {
   const supabase = await createClient();
-  const [funis, origens, vendedores, contatos, empresas] = await Promise.all([
+  const [config, funis, origens, vendedores, contatos, empresas] = await Promise.all([
+    obterConfiguracoes(),
     listarFunis(),
     listarOrigens(),
     listarVendedores(),
@@ -111,11 +129,14 @@ export async function opcoesNegocio(perfil: Vendedor | null) {
   return {
     funis,
     origens: origens.filter((o) => o.ativo).map((o) => ({ id: o.id, nome: o.nome })),
-    vendedores: vendedores.filter((v) => v.ativo).map((v) => ({ id: v.id, nome: v.nome })),
+    // o Agente SDR é um "vendedor" sem login: nunca é dono de negócio
+    vendedores: vendedores.filter((v) => v.ativo && v.tipo !== "agente").map((v) => ({ id: v.id, nome: v.nome })),
     contatos,
     empresas,
     gestor: perfil?.papel === "gestor",
     meuId: perfil?.id ?? null,
+    modEmpresas: config.mod_empresas,
+    variosFunis: config.mod_funis,
   };
 }
 
@@ -135,7 +156,7 @@ export async function opcoesCadastro(perfil: Vendedor | null) {
   return {
     empresas,
     origens: origens.filter((o) => o.ativo).map((o) => ({ id: o.id, nome: o.nome })),
-    vendedores: vendedores.filter((v) => v.ativo).map((v) => ({ id: v.id, nome: v.nome })),
+    vendedores: vendedores.filter((v) => v.ativo && v.tipo !== "agente").map((v) => ({ id: v.id, nome: v.nome })),
     gestor: perfil?.papel === "gestor",
     meuId: perfil?.id ?? null,
   };

@@ -3,10 +3,12 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const ABAS = [
-  { href: "/configuracoes", nome: "Empresa e regras" },
-  { href: "/configuracoes/funis", nome: "Funis e etapas" },
+  { href: "/configuracoes", nome: "Empresa" },
+  { href: "/configuracoes/propostas", nome: "Propostas e agenda" },
+  { href: "/configuracoes/funis", nome: "Funil e etapas" },
   { href: "/configuracoes/listas", nome: "Origens e motivos" },
   { href: "/configuracoes/mensagens", nome: "Modelos de mensagem" },
+  { href: "/configuracoes/modulos", nome: "Módulos e dados" },
 ];
 
 export function AbasConfiguracoes({ atual }: { atual: string }) {

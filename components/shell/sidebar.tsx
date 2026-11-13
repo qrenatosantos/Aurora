@@ -6,13 +6,13 @@ import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { sair } from "@/lib/auth/acoes";
 import { LogoNegocio } from "@/components/logo-negocio";
-import { itemAtivo, menuPara } from "@/lib/navegacao";
+import { itemAtivo, menuPara, type Modulos } from "@/lib/navegacao";
 import { cn } from "@/lib/utils";
 
 /** Nome, subtítulo e logo da marca (lidos no layout de app/(app)/). */
 export type DadosMarcaShell = { nome: string; subtitulo: string; logoUrl: string | null };
 
-export function Sidebar({ marca, gestor }: { marca: DadosMarcaShell; gestor: boolean }) {
+export function Sidebar({ marca, gestor, modulos }: { marca: DadosMarcaShell; gestor: boolean; modulos: Modulos }) {
   const caminho = usePathname();
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-borda bg-superficie md:flex nao-imprimir">
@@ -26,7 +26,7 @@ export function Sidebar({ marca, gestor }: { marca: DadosMarcaShell; gestor: boo
         </div>
       </div>
       <nav aria-label="Menu principal" className="flex-1 space-y-1 overflow-y-auto p-3">
-        {menuPara(gestor).map((item) => {
+        {menuPara(gestor, modulos).map((item) => {
           const ativo = itemAtivo(caminho, item.href);
           const Icone = item.icone;
           return (

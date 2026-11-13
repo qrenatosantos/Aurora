@@ -31,6 +31,12 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
   ]);
   const bloqueado = perfil !== null && !perfil.ativo;
   const gestor = ehGestor(perfil);
+  const modulos = {
+    empresas: config.mod_empresas,
+    funis: config.mod_funis,
+    metas: config.mod_metas,
+    comissoes: config.mod_comissoes,
+  };
   const dadosMarca = {
     nome: marca.nome,
     subtitulo: marca.subtitulo ?? SUBTITULO_PADRAO_MENU,
@@ -39,7 +45,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
 
   return (
     <>
-      <Sidebar marca={dadosMarca} gestor={gestor} />
+      <Sidebar marca={dadosMarca} gestor={gestor} modulos={modulos} />
 
       <div className="md:pl-64 print:pl-0">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-borda bg-fundo/90 px-4 backdrop-blur sm:px-6 nao-imprimir">
@@ -73,7 +79,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
               </div>
               <h1 className="text-lg font-semibold text-texto">Seu acesso está desativado</h1>
               <p className="mt-1 max-w-sm text-sm text-texto-2">
-                Só vendedores ativos acessam o sistema comercial. Fale com o gestor da sua empresa.
+                Só usuários ativos acessam o sistema. Fale com o gestor.
               </p>
             </div>
           ) : (
@@ -82,7 +88,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      <BottomNav marca={dadosMarca} gestor={gestor} />
+      <BottomNav marca={dadosMarca} gestor={gestor} modulos={modulos} />
     </>
   );
 }

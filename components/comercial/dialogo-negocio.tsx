@@ -9,6 +9,7 @@ import { Botao } from "@/components/ui/botao";
 import { AreaTexto, Campo, Entrada, Selecao } from "@/components/ui/campo";
 import { EntradaMoeda, valorCampo } from "@/components/ui/controles";
 import { Modal } from "@/components/ui/modal";
+import { TIPOS_EVENTO } from "@/lib/aurora";
 import type { Etapa, Funil, Negocio } from "@/lib/tipos";
 import { useAcao } from "@/lib/use-acao";
 
@@ -21,6 +22,9 @@ export type OpcoesNegocio = {
   vendedores: Opcao[];
   gestor: boolean;
   meuId: string | null;
+  /** Módulos ligados em Configurações (desligados, os campos somem). */
+  modEmpresas?: boolean;
+  variosFunis?: boolean;
 };
 
 export function DialogoNegocio({
@@ -42,7 +46,8 @@ export function DialogoNegocio({
   const funisAtivos = opcoes.funis.filter((f) => f.ativo || f.id === negocio?.funil_id);
   const [funilId, setFunilId] = useState(negocio?.funil_id ?? inicial.funilId ?? funisAtivos[0]?.id ?? "");
   const [contatoId, setContatoId] = useState(negocio?.contato_id ?? inicial.contatoId ?? "");
-  const [novoContato, setNovoContato] = useState(false);
+  const [novoContato, setNovoContato] = useState(!negocio && !inicial.contatoId);
+  const mostrarFunil = Boolean(opcoes.variosFunis) || funisAtivos.length > 1;
   const [novaEmpresa, setNovaEmpresa] = useState(false);
   const etapas = opcoes.funis.find((f) => f.id === funilId)?.etapas ?? [];
   const empresaDoContato = opcoes.contatos.find((c) => c.id === contatoId)?.empresa_id ?? "";
@@ -64,7 +69,7 @@ export function DialogoNegocio({
             <Entrada
               {...p}
               defaultValue={negocio?.titulo ?? ""}
-              placeholder="Ex.: 20 notebooks para a filial Campinas"
+              placeholder="Ex.: Casamento · Ana Paula"
               maxLength={120}
               required
               autoFocus={!negocio}
@@ -73,17 +78,21 @@ export function DialogoNegocio({
         </Campo>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Campo rotulo="Funil" nome="funil_id" erro={e.funil_id}>
-            {(p) => (
-              <Selecao {...p} value={funilId} onChange={(ev) => setFunilId(ev.target.value)}>
-                {funisAtivos.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.nome}
-                  </option>
-                ))}
-              </Selecao>
-            )}
-          </Campo>
+          {mostrarFunil ? (
+            <Campo rotulo="Funil" nome="funil_id" erro={e.funil_id}>
+              {(p) => (
+                <Selecao {...p} value={funilId} onChange={(ev) => setFunilId(ev.target.value)}>
+                  {funisAtivos.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.nome}
+                    </option>
+                  ))}
+                </Selecao>
+              )}
+            </Campo>
+          ) : (
+            <input type="hidden" name="funil_id" value={funilId} />
+          )}
           <Campo rotulo="Etapa" nome="etapa_id" erro={e.etapa_id}>
             {(p) => (
               <Selecao
@@ -110,10 +119,10 @@ export function DialogoNegocio({
             {novoContato ? (
               <>
                 <Campo rotulo="Nome do novo contato" nome="novo_contato" erro={e.novo_contato}>
-                  {(p) => <Entrada {...p} maxLength={120} placeholder="Ex.: Carla Duarte" />}
+                  {(p) => <Entrada {...p} maxLength={120} placeholder="Ex.: Ana Paula Souza" />}
                 </Campo>
                 <Campo rotulo="Telefone / WhatsApp" nome="novo_telefone" erro={e.novo_telefone}>
-                  {(p) => <Entrada {...p} type="tel" inputMode="tel" placeholder="(11) 90000-0000" />}
+                  {(p) => <Entrada {...p} type="tel" inputMode="tel" placeholder="(34) 90000-0000" />}
                 </Campo>
               </>
             ) : (
@@ -138,6 +147,7 @@ export function DialogoNegocio({
               {novoContato ? "Escolher contato existente" : (<><Plus className="size-4" aria-hidden /> Cadastrar contato novo</>)}
             </button>
           </div>
+          {opcoes.modEmpresas && (
           <div className="space-y-2">
             {novaEmpresa ? (
               <Campo rotulo="Nome da nova empresa" nome="nova_empresa" erro={e.nova_empresa}>
@@ -165,14 +175,35 @@ export function DialogoNegocio({
               {novaEmpresa ? "Escolher empresa existente" : (<><Plus className="size-4" aria-hidden /> Cadastrar empresa nova</>)}
             </button>
           </div>
+          )}
         </div>
+
+        {!negocio && (
+          <div className="grid gap-4 rounded-xl border border-borda p-3 sm:grid-cols-2">
+            <Campo rotulo="Tipo de evento" nome="evento_tipo" erro={e.evento_tipo}>
+              {(p) => (
+                <Selecao {...p} defaultValue="">
+                  <option value="">— a definir —</option>
+                  {TIPOS_EVENTO.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome}
+                    </option>
+                  ))}
+                </Selecao>
+              )}
+            </Campo>
+            <Campo rotulo="Data do evento" nome="evento_data" erro={e.evento_data} ajuda="Os outros dados do evento ficam na ficha do negócio.">
+              {(p) => <Entrada {...p} type="date" />}
+            </Campo>
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-3">
           <Campo
             rotulo="Valor estimado"
             nome="valor"
             erro={e.valor}
-            ajuda={temProdutos ? "Soma dos produtos (edite na tela do negócio)." : "Ou adicione produtos depois."}
+            ajuda={temProdutos ? "Vem da proposta aceita." : "Ao aceitar a proposta, o valor é atualizado sozinho."}
           >
             {(p) => <EntradaMoeda {...p} defaultValue={valorCampo(negocio?.valor ?? 0)} disabled={temProdutos} placeholder="0,00" />}
           </Campo>
@@ -195,7 +226,7 @@ export function DialogoNegocio({
 
         <div className="grid gap-4 sm:grid-cols-2">
           {opcoes.gestor && (
-            <Campo rotulo="Vendedor responsável" nome="vendedor_id" erro={e.vendedor_id}>
+            <Campo rotulo="Responsável" nome="vendedor_id" erro={e.vendedor_id}>
               {(p) => (
                 <Selecao {...p} defaultValue={negocio?.vendedor_id ?? opcoes.meuId ?? ""}>
                   {opcoes.vendedores.map((v) => (
@@ -207,7 +238,7 @@ export function DialogoNegocio({
               )}
             </Campo>
           )}
-          <Campo rotulo="Etiquetas" nome="tags" erro={e.tags} ajuda="Separe por vírgula. Ex.: Grande conta, Urgente">
+          <Campo rotulo="Etiquetas" nome="tags" erro={e.tags} ajuda="Separe por vírgula. Ex.: Indicação da Maria, Urgente">
             {(p) => <Entrada {...p} defaultValue={negocio?.tags.join(", ") ?? ""} maxLength={300} />}
           </Campo>
         </div>

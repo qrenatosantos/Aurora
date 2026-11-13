@@ -8,11 +8,19 @@
  *
  * Só a fonte padrão (Inter) é pré-carregada; as outras só são baixadas se forem usadas.
  */
-import { DM_Sans, Fredoka, Inter, Lora, Manrope, Nunito, Playfair_Display, Source_Sans_3, Space_Grotesk } from "next/font/google";
+import { Cormorant_Garamond, DM_Sans, Fredoka, Inter, Lora, Manrope, Nunito, Playfair_Display, Source_Sans_3, Space_Grotesk } from "next/font/google";
 
-const inter = Inter({ subsets: ["latin"], variable: "--ff-inter", display: "swap" });
+const inter = Inter({ subsets: ["latin"], variable: "--ff-inter", display: "swap", preload: false });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--ff-playfair", display: "swap", preload: false });
-const dmSans = DM_Sans({ subsets: ["latin"], variable: "--ff-dm-sans", display: "swap", preload: false });
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--ff-dm-sans", display: "swap" });
+// Fontes do site da Aurora (combinação "Aurora" da Personalização, a padrão deste sistema)
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--ff-cormorant",
+  display: "swap",
+});
 const nunito = Nunito({ subsets: ["latin"], variable: "--ff-nunito", display: "swap", preload: false });
 const lora = Lora({ subsets: ["latin"], variable: "--ff-lora", display: "swap", preload: false });
 const sourceSans = Source_Sans_3({ subsets: ["latin"], variable: "--ff-source-sans", display: "swap", preload: false });
@@ -21,6 +29,6 @@ const manrope = Manrope({ subsets: ["latin"], variable: "--ff-manrope", display:
 const fredoka = Fredoka({ subsets: ["latin"], variable: "--ff-fredoka", display: "swap", preload: false });
 
 /** Classes que declaram as variáveis --ff-* (vão no <html>). */
-export const classesFontes = [inter, playfair, dmSans, nunito, lora, sourceSans, spaceGrotesk, manrope, fredoka]
+export const classesFontes = [cormorant, inter, playfair, dmSans, nunito, lora, sourceSans, spaceGrotesk, manrope, fredoka]
   .map((f) => f.variable)
   .join(" ");

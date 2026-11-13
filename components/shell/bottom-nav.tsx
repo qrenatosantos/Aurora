@@ -11,13 +11,13 @@ import { useEffect, useRef, useState } from "react";
 import { LogoNegocio } from "@/components/logo-negocio";
 import type { DadosMarcaShell } from "@/components/shell/sidebar";
 import { sair } from "@/lib/auth/acoes";
-import { itemAtivo, menuPara } from "@/lib/navegacao";
+import { itemAtivo, menuPara, type Modulos } from "@/lib/navegacao";
 import { cn } from "@/lib/utils";
 
 const MAX_ITENS = 4;
 
-export function BottomNav({ marca, gestor }: { marca: DadosMarcaShell; gestor: boolean }) {
-  const NAVEGACAO = menuPara(gestor);
+export function BottomNav({ marca, gestor, modulos }: { marca: DadosMarcaShell; gestor: boolean; modulos: Modulos }) {
+  const NAVEGACAO = menuPara(gestor, modulos);
   const caminho = usePathname();
   const [maisAberto, setMaisAberto] = useState(false);
   const dialogo = useRef<HTMLDialogElement>(null);

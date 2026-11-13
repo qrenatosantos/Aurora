@@ -11,28 +11,32 @@ import { type EstadoAcao, errosDoZod, falha, lerFormulario, mensagemErroBanco, s
 import { somenteDigitos } from "@/lib/formatar";
 import { exigirGestor } from "@/lib/perfil";
 import { createClient } from "@/lib/supabase/server";
-import { caixa, ehUuid, idOpcional, inteiro, percentual, textoObrigatorio, textoOpcional } from "@/lib/validacao";
+import { type ChaveTexto, TEXTOS_PADRAO } from "@/lib/proposta-textos";
+import { caixa, ehUuid, emailOpcional, idOpcional, inteiro, textoObrigatorio, textoOpcional } from "@/lib/validacao";
 
 const esquema = z.object({
   nome_negocio: textoObrigatorio(2, 80, "Informe o nome da empresa."),
+  responsavel: textoOpcional(80),
   documento: textoOpcional(30),
   whatsapp: z
     .string()
     .optional()
     .transform((v) => somenteDigitos(v))
-    .refine((v) => v === "" || (v.length >= 10 && v.length <= 13), "WhatsApp com DDD, ex.: (11) 90000-0000.")
+    .refine((v) => v === "" || (v.length >= 10 && v.length <= 13), "WhatsApp com DDD, ex.: (34) 90000-0000.")
     .transform((v) => (v === "" ? null : v)),
   email: textoOpcional(160),
   site: textoOpcional(160),
   cidade: textoOpcional(80),
+  uf: z
+    .string()
+    .optional()
+    .transform((v) => (v ?? "").trim().toUpperCase())
+    .refine((v) => v === "" || /^[A-Z]{2}$/.test(v), "Use a sigla do estado, ex.: MG.")
+    .transform((v) => (v === "" ? null : v)),
   endereco: textoOpcional(160),
   instagram: textoOpcional(60).transform((v) => (v ? v.replace(/^@/, "") : v)),
   vendedores_veem_tudo: caixa,
-  validade_proposta_dias: inteiro(1, 365, "De 1 a 365 dias."),
   dias_sem_contato: inteiro(1, 90, "De 1 a 90 dias."),
-  desconto_max_avulso: percentual,
-  condicoes_padrao: textoOpcional(1000),
-  rodape_proposta: textoOpcional(500),
   mensagem_whatsapp: textoOpcional(500),
 });
 
@@ -46,6 +50,103 @@ export async function salvarConfiguracoes(_anterior: EstadoAcao, formData: FormD
   if (error) return falha(mensagemErroBanco(error));
   revalidatePath("/", "layout");
   return sucesso("Configurações salvas.");
+}
+
+// ---------------------------------------------------------------- propostas, agenda e atendimento (Aurora)
+/** Número opcional: "" = não definido (nulo no banco). Aceita vírgula. */
+const numeroOpcional = (min: number, max: number, msg: string, inteiroSo = false) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => (v ?? "").trim().replace(/\./g, "").replace(",", "."))
+    .refine((v) => v === "" || (Number.isFinite(Number(v)) && Number(v) >= min && Number(v) <= max && (!inteiroSo || Number.isInteger(Number(v)))), msg)
+    .transform((v) => (v === "" ? null : Number(v)));
+
+const esquemaAurora = z.object({
+  validade_proposta_dias: inteiro(1, 365, "De 1 a 365 dias."),
+  prefixo_proposta: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{2,8}$/, "De 2 a 8 letras ou números, sem espaço."),
+  entrada_pct: numeroOpcional(0, 100, "De 0 a 100."),
+  entrada_dias_antes: numeroOpcional(0, 365, "De 0 a 365 dias.", true),
+  saldo_dias_antes: numeroOpcional(0, 365, "De 0 a 365 dias.", true),
+  cancelamento_aviso_dias: numeroOpcional(0, 365, "De 0 a 365 dias.", true),
+  cancelamento_multa_pct: numeroOpcional(0, 100, "De 0 a 100."),
+  taxa_quebra: numeroOpcional(0, 99999, "Valor inválido."),
+  foro: textoOpcional(120),
+  condicoes_padrao: textoOpcional(1000),
+  rodape_proposta: textoOpcional(500),
+  capacidade_simultanea: inteiro(1, 50, "De 1 a 50."),
+  duracao_padrao_horas: z
+    .string()
+    .transform((v) => Number(v.replace(",", ".")))
+    .refine((v) => Number.isFinite(v) && v >= 0.5 && v <= 24, "De 0,5 a 24 horas."),
+  atendimento_novos_leads: z.enum(["humano", "agente"]),
+});
+
+export async function salvarConfigAurora(_anterior: EstadoAcao, formData: FormData): Promise<EstadoAcao> {
+  const bruto = lerFormulario(formData);
+  const dados = esquemaAurora.safeParse(bruto);
+  if (!dados.success) return falha("Confira os campos destacados.", errosDoZod(dados.error));
+  const g = await exigirGestor();
+  if ("erro" in g) return falha(g.erro);
+  // textos da proposta: só guarda o que for diferente do padrão
+  const textos: Record<string, string> = {};
+  for (const chave of Object.keys(TEXTOS_PADRAO) as ChaveTexto[]) {
+    const v = (bruto[`texto_${chave}`] ?? "").replace(/\r/g, "").trim();
+    if (v.length > 1500) return falha("Um dos textos da proposta passou de 1.500 caracteres.", { [`texto_${chave}`]: "Máximo de 1.500 caracteres." });
+    if (v !== "" && v !== TEXTOS_PADRAO[chave]) textos[chave] = v;
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("configuracoes")
+    .upsert({ unica: true, ...dados.data, proposta_textos: textos }, { onConflict: "unica" });
+  if (error) return falha(mensagemErroBanco(error));
+  revalidatePath("/", "layout");
+  return sucesso("Configurações salvas.");
+}
+
+// ---------------------------------------------------------------- módulos e dados (LGPD)
+export async function salvarModulos(_anterior: EstadoAcao, formData: FormData): Promise<EstadoAcao> {
+  const r = z
+    .object({
+      mod_empresas: caixa,
+      mod_funis: caixa,
+      mod_metas: caixa,
+      mod_comissoes: caixa,
+      retencao_leads_meses: inteiro(1, 120, "De 1 a 120 meses."),
+      email_privacidade: emailOpcional,
+    })
+    .safeParse(lerFormulario(formData));
+  if (!r.success) return falha("Confira os campos destacados.", errosDoZod(r.error));
+  const g = await exigirGestor();
+  if ("erro" in g) return falha(g.erro);
+  const supabase = await createClient();
+  const { error } = await supabase.from("configuracoes").upsert({ unica: true, ...r.data }, { onConflict: "unica" });
+  if (error) return falha(mensagemErroBanco(error));
+  revalidatePath("/", "layout");
+  return sucesso("Módulos e prazo de guarda salvos.");
+}
+
+/** Prazo de guarda (LGPD): simular = só conta quantos contatos seriam apagados. */
+export async function aplicarRetencao(simular: boolean): Promise<EstadoAcao> {
+  const g = await exigirGestor();
+  if ("erro" in g) return falha(g.erro);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("aplicar_retencao", { p_simular: simular });
+  if (error) return falha(mensagemErroBanco(error));
+  const n = Number(data ?? 0);
+  if (!simular) revalidatePath("/", "layout");
+  return sucesso(
+    simular
+      ? n === 0
+        ? "Nenhum contato passou do prazo de guarda."
+        : `${n} contato(s) passaram do prazo de guarda.`
+      : `${n} contato(s) tiveram os dados pessoais apagados.`,
+    { quantidade: String(n) },
+  );
 }
 
 // ---------------------------------------------------------------- funis

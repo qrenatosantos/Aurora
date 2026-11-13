@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 8 405 312" width="405" height="312"><defs>
+<linearGradient id="ou" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a9843f"/><stop offset=".5" stop-color="#f4db86"/><stop offset="1" stop-color="#a9843f"/></linearGradient>
+<linearGradient id="oa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ead08a"/><stop offset="1" stop-color="#a9843f"/></linearGradient>
+<linearGradient id="av" x1="80" y1="0" x2="410" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6a49a4" stop-opacity="0"/><stop offset=".3" stop-color="#6a49a4" stop-opacity="0"/><stop offset=".5" stop-color="#6a49a4" stop-opacity=".85"/><stop offset=".85" stop-color="#7b5cc0"/><stop offset="1" stop-color="#6a49a4" stop-opacity="0"/></linearGradient>
+<linearGradient id="at" x1="70" y1="0" x2="410" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#46bbaa" stop-opacity="0"/><stop offset=".22" stop-color="#46bbaa" stop-opacity="0"/><stop offset=".42" stop-color="#46bbaa"/><stop offset=".7" stop-color="#45a6a8" stop-opacity=".9"/><stop offset="1" stop-color="#45a6a8" stop-opacity="0"/></linearGradient>
+<filter id="bl" x="-10%" y="-60%" width="120%" height="220%"><feGaussianBlur stdDeviation="8"/></filter>
+</defs><g filter="url(#bl)" fill="none" stroke-linecap="round">
+<path d="M100 292 C150 238 205 205 265 196 C325 188 362 155 405 112" stroke="url(#av)" stroke-width="30"/>
+<path d="M78 312 C138 262 190 240 250 232 C318 223 360 192 405 152" stroke="url(#at)" stroke-width="34"/>
+</g><path d="M77.7 320.1 A195 195 0 1 1 406.3 320.1" fill="none" stroke="url(#oa)" stroke-width="5"/>
+<path d="M87.5 314 A185 185 0 1 1 396.5 314" fill="none" stroke="url(#oa)" stroke-width="1.8"/><path fill="url(#ou)" fill-rule="evenodd" d="M160 89 H322 C323 146 254 152 252 194 V282 C254 292 275 297 297 299 V306 H186 V299 C208 297 229 292 232 282 V194 C230 152 159 146 160 89 Z M167 96 H315 C315 140 247 154 245.5 197 V288 C247 292 253 295 260 297 H223 C230 295 236 292 238.5 288 V197 C237 154 167 140 167 96 Z"/>
+<path fill="url(#ou)" d="M172 114 C188 107 205 108 222 120 C243 135 280 136 309 112 C306 142 249 154 242 192 C235 154 174 140 172 114 Z"/><path fill="#0b1a33" d="M209 121 C210 129 212 131 220 132 C212 133 210 135 209 143 C208 135 206 133 198 132 C206 131 208 129 209 121 Z"/>
+<path fill="#f4db86" d="M273 103 C274 109 275 110 281 111 C275 112 274 113 273 119 C272 113 271 112 265 111 C271 110 272 109 273 103 Z"/></svg>

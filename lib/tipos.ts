@@ -40,9 +40,35 @@ export type ConfiguracoesRow = {
   rodape_proposta: string | null;
   desconto_max_avulso: number;
   dias_sem_contato: number;
+  // Aurora
+  responsavel: string | null;
+  uf: string | null;
+  mod_empresas: boolean;
+  mod_funis: boolean;
+  mod_metas: boolean;
+  mod_comissoes: boolean;
+  mod_equipe: boolean;
+  capacidade_simultanea: number;
+  duracao_padrao_horas: number;
+  atendimento_novos_leads: Atendimento;
+  entrada_pct: number | null;
+  entrada_dias_antes: number | null;
+  saldo_dias_antes: number | null;
+  cancelamento_aviso_dias: number | null;
+  cancelamento_multa_pct: number | null;
+  taxa_quebra: number | null;
+  foro: string | null;
+  prefixo_proposta: string;
+  proposta_textos: Record<string, string>;
+  proposta_fotos: Record<string, string>;
+  retencao_leads_meses: number;
+  email_privacidade: string | null;
   created_at: string;
   updated_at: string;
 };
+
+/** Quem conversa com o cliente. */
+export type Atendimento = "humano" | "agente";
 
 export type Papel = "gestor" | "vendedor";
 
@@ -56,6 +82,8 @@ export type VendedorRow = {
   equipe_id: string | null;
   cor: string;
   ativo: boolean;
+  /** "agente" = o Agente SDR (vendedor especial, sem login). */
+  tipo: "humano" | "agente";
   created_at: string;
   updated_at: string;
 };
@@ -164,6 +192,10 @@ export type NegocioRow = {
   ultima_atividade_em: string | null;
   tags: string[];
   observacoes: string | null;
+  /** Código curto do pedido (ex.: A7K2Q9). */
+  codigo: string | null;
+  atendimento: Atendimento;
+  atendimento_desde: string;
   created_at: string;
   updated_at: string;
 };
@@ -215,7 +247,45 @@ export type AtividadeRow = {
   updated_at: string;
 };
 
-export type StatusProposta = "rascunho" | "aguardando_aprovacao" | "enviada" | "aceita" | "recusada" | "substituida";
+export type StatusProposta =
+  | "rascunho"
+  | "aguardando_aprovacao"
+  | "ajustes_solicitados"
+  | "aprovada"
+  | "enviada"
+  | "aceita"
+  | "recusada"
+  | "substituida";
+
+export type TipoEvento = "casamento" | "15_anos" | "aniversario" | "formatura" | "empresa" | "outro";
+export type LinhaBebida = "tradicional" | "premium";
+export type Copo = "long_drink" | "baixo" | "caneca" | "taca" | "outro";
+
+/** Cópia dos dados do evento guardada na proposta. */
+export type EventoProposta = {
+  tipo?: TipoEvento | null;
+  nome?: string | null;
+  data?: string | null;
+  mes_previsto?: string | null;
+  hora_inicio?: string | null;
+  duracao_horas?: number | null;
+  cidade?: string | null;
+  uf?: string | null;
+  local?: string | null;
+  convidados?: number | null;
+  convidados_faixa?: string | null;
+};
+
+/** Um drink no cardápio da proposta. */
+export type DrinkCardapio = {
+  drink_id?: string | null;
+  nome: string;
+  descricao?: string | null;
+  foto_url?: string | null;
+  alcoolico?: boolean | null;
+  copo?: Copo | null;
+  categoria?: string | null;
+};
 
 export type PropostaRow = {
   id: string;
@@ -245,6 +315,33 @@ export type PropostaRow = {
   aceite_ip: string | null;
   aceite_navegador: string | null;
   aceite_via: "link" | "manual" | null;
+  // Aurora
+  origem: Atendimento;
+  evento: EventoProposta;
+  cardapio: DrinkCardapio[];
+  pacote_nome: string | null;
+  linha: LinhaBebida | null;
+  capa_titulo: string | null;
+  capa_subtitulo: string | null;
+  capa_foto_url: string | null;
+  apresentacao: string | null;
+  descricao_servico: string | null;
+  mensagem_final: string | null;
+  foto_final_url: string | null;
+  entrada_pct: number | null;
+  entrada_dias_antes: number | null;
+  saldo_dias_antes: number | null;
+  cancelamento_aviso_dias: number | null;
+  cancelamento_multa_pct: number | null;
+  taxa_quebra: number | null;
+  foro: string | null;
+  calculo: ResultadoCalculo | null;
+  preco_pendente: boolean;
+  nota_interna: string | null;
+  submetida_por: string | null;
+  ajustes_comentario: string | null;
+  ajustes_em: string | null;
+  ajustes_por: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -322,6 +419,286 @@ export type AuditoriaRow = {
   acao: "criou" | "alterou" | "excluiu";
   campos: string[] | null;
   descricao: string | null;
+  ator_tipo: "humano" | "agente" | "cliente" | "site" | "sistema";
+  chave_api_id: string | null;
+};
+
+// ---------------------------------------------------------------------
+// AURORA: evento, agenda, catálogo, calculadora, atendimento, integrações
+// ---------------------------------------------------------------------
+export type SituacaoData = "consulta" | "reservada" | "confirmada" | "liberada";
+
+export type EventoRow = {
+  id: string;
+  negocio_id: string;
+  tipo: TipoEvento | null;
+  nome: string | null;
+  data: string | null;
+  mes_previsto: string | null;
+  hora_inicio: string | null;
+  duracao_horas: number | null;
+  cidade: string | null;
+  uf: string | null;
+  local: string | null;
+  convidados: number | null;
+  convidados_faixa: string | null;
+  pacote_id: string | null;
+  quer_ajuda_pacote: boolean;
+  linha: LinhaBebida | null;
+  preferencias: string[];
+  observacoes: string | null;
+  situacao_data: SituacaoData;
+  reservada_ate: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BloqueioAgendaRow = { id: string; inicio: string; fim: string; motivo: string | null; created_at: string; updated_at: string };
+
+export type CategoriaInsumo =
+  | "destilado"
+  | "licor"
+  | "vinho"
+  | "fruta"
+  | "xarope"
+  | "suco"
+  | "refrigerante"
+  | "gelo"
+  | "guarnicao"
+  | "descartavel"
+  | "outro";
+
+export type InsumoRow = {
+  id: string;
+  nome: string;
+  categoria: CategoriaInsumo;
+  unidade: "ml" | "g" | "un";
+  embalagem: number;
+  preco_tradicional: number | null;
+  preco_premium: number | null;
+  marca_tradicional: string | null;
+  marca_premium: string | null;
+  observacoes: string | null;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CategoriaDrink = "classico" | "premium" | "sem_alcool" | "autoral";
+
+export type DrinkRow = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  categoria: CategoriaDrink;
+  alcoolico: boolean;
+  copo: Copo | null;
+  foto_url: string | null;
+  ativo: boolean;
+  ordem: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DrinkInsumoRow = { id: string; drink_id: string; insumo_id: string; quantidade: number; created_at: string; updated_at: string };
+
+export type PacoteRow = {
+  id: string;
+  nome: string;
+  slogan: string | null;
+  descricao: string | null;
+  ordem: number;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PacoteDrinkRow = { pacote_id: string; drink_id: string; ordem: number; created_at: string };
+
+export type CalculadoraRow = {
+  id: string;
+  unica: boolean;
+  drinks_por_convidado_hora: number | null;
+  convidados_por_bartender: number | null;
+  minimo_bartenders: number;
+  custo_bartender_hora: number | null;
+  horas_montagem: number;
+  custo_fixo: number;
+  taxa_outra_cidade: number;
+  perdas_pct: number;
+  margem_pct: number | null;
+  arredondar_para: number;
+  preco_minimo: number;
+  aprovada: boolean;
+  aprovada_em: string | null;
+  aprovada_por: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Memória de cálculo devolvida por calcular_preco(). */
+export type ResultadoCalculo = {
+  ok: boolean;
+  aprovada: boolean;
+  pendencias: string[];
+  entrada?: { pacote_id: string | null; pacote: string | null; convidados: number; duracao_horas: number; linha: LinhaBebida; outra_cidade: boolean };
+  total_drinks?: number;
+  drinks?: { id: string; nome: string; quantidade: number }[];
+  insumos?: {
+    id: string;
+    nome: string;
+    categoria: CategoriaInsumo;
+    unidade: string;
+    quantidade: number;
+    embalagem: number;
+    embalagens: number;
+    preco_embalagem: number;
+    linha: LinhaBebida;
+    marca: string | null;
+    custo: number;
+    compra: number;
+  }[];
+  bartenders?: number;
+  custos?: {
+    insumos: number;
+    compra_embalagens_inteiras: number;
+    mao_de_obra: number;
+    fixo: number;
+    outra_cidade: number;
+    total: number;
+    margem_pct: number;
+  };
+  preco_sugerido?: number;
+  calculado_em?: string;
+};
+
+export type Disponibilidade = {
+  data: string;
+  hora_inicio: string | null;
+  capacidade: number;
+  confirmados: number;
+  reservados: number;
+  vagas: number;
+  bloqueada: boolean;
+  motivo_bloqueio: string | null;
+  situacao: "livre" | "parcial" | "lotada" | "bloqueada";
+  eventos_no_dia: { hora_inicio: string | null; duracao_horas: number | null; situacao: "confirmada" | "reservada"; bate_no_horario: boolean }[];
+};
+
+export type PropostaRevisaoRow = {
+  id: string;
+  proposta_id: string;
+  de_status: StatusProposta | null;
+  para_status: StatusProposta;
+  comentario: string | null;
+  autor_id: string | null;
+  autor_tipo: string;
+  created_at: string;
+};
+
+export type TransferenciaRow = {
+  id: string;
+  negocio_id: string;
+  de: Atendimento;
+  para: Atendimento;
+  motivo: string | null;
+  autor_id: string | null;
+  autor_tipo: "humano" | "agente" | "sistema";
+  created_at: string;
+};
+
+export type CanalMensagem = "whatsapp" | "instagram" | "email" | "telefone" | "site" | "outro";
+
+export type MensagemRow = {
+  id: string;
+  negocio_id: string;
+  contato_id: string | null;
+  canal: CanalMensagem;
+  direcao: "entrada" | "saida";
+  autor: "cliente" | "agente" | "humano" | "sistema";
+  texto: string;
+  enviada_em: string;
+  id_externo: string | null;
+  created_at: string;
+};
+
+export type LeadRecebidoRow = {
+  id: string;
+  created_at: string;
+  origem: string;
+  dados: Json;
+  ip_hash: string | null;
+  contato_id: string | null;
+  negocio_id: string | null;
+  status: "processado" | "duplicado" | "rejeitado";
+  motivo: string | null;
+};
+
+export type EventoSaidaRow = {
+  id: number;
+  tipo: string;
+  negocio_id: string | null;
+  proposta_id: string | null;
+  contato_id: string | null;
+  dados: Json;
+  created_at: string;
+};
+
+export type WebhookRow = {
+  id: string;
+  nome: string;
+  url: string;
+  segredo: string;
+  eventos: string[];
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WebhookEntregaRow = {
+  id: number;
+  evento_id: number;
+  webhook_id: string;
+  status: "pendente" | "enviando" | "entregue" | "falhou" | "desistiu";
+  tentativas: number;
+  pedido_id: number | null;
+  http_status: number | null;
+  erro: string | null;
+  proxima_tentativa_em: string;
+  entregue_em: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ChaveApiRow = {
+  id: string;
+  nome: string;
+  prefixo: string;
+  hash: string;
+  escopos: string[];
+  limite_por_minuto: number;
+  ativa: boolean;
+  criada_por: string | null;
+  ultimo_uso_em: string | null;
+  revogada_em: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AgenteLogRow = {
+  id: number;
+  created_at: string;
+  chave_id: string | null;
+  acao: string;
+  status: number;
+  ok: boolean;
+  negocio_id: string | null;
+  registro_id: string | null;
+  resumo: string | null;
+  erro: string | null;
+  pedido: Json;
+  ip: string | null;
+  duracao_ms: number | null;
 };
 
 export type ResultadoImportacao = {
@@ -357,6 +734,23 @@ export type Database = {
       regras_comissao: Tabela<RegraComissaoRow>;
       comissoes: Tabela<ComissaoRow>;
       auditoria: Tabela<AuditoriaRow>;
+      eventos: Tabela<EventoRow>;
+      bloqueios_agenda: Tabela<BloqueioAgendaRow>;
+      insumos: Tabela<InsumoRow>;
+      drinks: Tabela<DrinkRow>;
+      drink_insumos: Tabela<DrinkInsumoRow>;
+      pacotes: Tabela<PacoteRow>;
+      pacote_drinks: Tabela<PacoteDrinkRow>;
+      calculadora: Tabela<CalculadoraRow>;
+      proposta_revisoes: Tabela<PropostaRevisaoRow>;
+      transferencias: Tabela<TransferenciaRow>;
+      mensagens: Tabela<MensagemRow>;
+      leads_recebidos: Tabela<LeadRecebidoRow>;
+      eventos_saida: Tabela<EventoSaidaRow>;
+      webhooks: Tabela<WebhookRow>;
+      webhook_entregas: Tabela<WebhookEntregaRow>;
+      chaves_api: Tabela<ChaveApiRow>;
+      agente_log: Tabela<AgenteLogRow>;
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -378,6 +772,24 @@ export type Database = {
       criar_proposta: { Args: { p_negocio_id: string }; Returns: string };
       salvar_proposta: { Args: { p_id: string; p_dados: Json; p_itens: Json }; Returns: undefined };
       nova_versao_proposta: { Args: { p_id: string }; Returns: string };
+      duplicar_proposta: { Args: { p_id: string; p_negocio_destino: string }; Returns: string };
+      calcular_preco: { Args: { p: Json }; Returns: Json };
+      calculadora_pendencias: { Args: never; Returns: string[] };
+      aprovar_calculadora: { Args: never; Returns: undefined };
+      disponibilidade_data: {
+        Args: { p_data: string; p_hora?: string | null; p_duracao?: number | null; p_ignorar?: string | null };
+        Returns: Json;
+      };
+      transferir_atendimento: { Args: { p_negocio: string; p_para: string; p_motivo?: string | null }; Returns: boolean };
+      receber_lead_site: { Args: { p: Json; p_ip?: string | null }; Returns: Json };
+      api_agente: { Args: { p_chave: string; p_acao: string; p_dados?: Json; p_meta?: Json }; Returns: Json };
+      criar_chave_api: { Args: { p_nome: string; p_escopos?: string[] | null; p_limite?: number }; Returns: Json };
+      revogar_chave_api: { Args: { p_id: string }; Returns: undefined };
+      testar_webhook: { Args: { p_webhook: string }; Returns: number };
+      processar_webhooks: { Args: never; Returns: undefined };
+      exportar_contato: { Args: { p_id: string }; Returns: Json };
+      anonimizar_contato: { Args: { p_id: string; p_incluir_fechados?: boolean }; Returns: Json };
+      aplicar_retencao: { Args: { p_simular?: boolean }; Returns: number };
       recalcular_comissoes_pendentes: { Args: never; Returns: number };
       ranking_vendedores: {
         Args: { p_inicio: string; p_fim: string };
@@ -459,3 +871,19 @@ export type Meta = MetaRow;
 export type RegraComissao = RegraComissaoRow;
 export type Comissao = ComissaoRow;
 export type Auditoria = AuditoriaRow;
+export type Evento = EventoRow;
+export type BloqueioAgenda = BloqueioAgendaRow;
+export type Insumo = InsumoRow;
+export type Drink = DrinkRow;
+export type DrinkInsumo = DrinkInsumoRow;
+export type Pacote = PacoteRow;
+export type PacoteDrink = PacoteDrinkRow;
+export type Calculadora = CalculadoraRow;
+export type PropostaRevisao = PropostaRevisaoRow;
+export type Transferencia = TransferenciaRow;
+export type Mensagem = MensagemRow;
+export type Webhook = WebhookRow;
+export type WebhookEntrega = WebhookEntregaRow;
+export type EventoSaida = EventoSaidaRow;
+export type ChaveApi = ChaveApiRow;
+export type AgenteLog = AgenteLogRow;

@@ -15,6 +15,7 @@ import { DESCRICAO_APP, NOME_APP } from "@/lib/navegacao";
 // ---------------------------------------------------------------------------
 
 export const FONTES = [
+  { id: "aurora", nome: "Aurora", descricao: "Cormorant Garamond + DM Sans (as do site)" },
   { id: "moderna", nome: "Moderna", descricao: "Inter — limpa e neutra" },
   { id: "elegante", nome: "Elegante", descricao: "Playfair Display + DM Sans" },
   { id: "amigavel", nome: "Amigável", descricao: "Nunito — arredondada" },
@@ -40,6 +41,7 @@ export type TemaPadrao = (typeof TEMAS)[number]["id"];
 
 /** Paletas prontas (1 clique). A primeira é o padrão do app (e do "Restaurar padrão"). */
 export const PALETAS = [
+  { id: "aurora", nome: "Aurora", principal: "#021938", destaque: "#C6A86A" },
   { id: "comercial", nome: "Comercial", principal: "#1E40AF", destaque: "#F59E0B" },
   { id: "ameixa", nome: "Ameixa", principal: "#5B2A4E", destaque: "#E0A458" },
   { id: "oceano", nome: "Oceano", principal: "#1D4E89", destaque: "#F4A259" },
@@ -97,9 +99,9 @@ export const MARCA_PADRAO: Marca = {
   logoUrl: null,
   corPrimaria: PALETAS[0].principal,
   corDestaque: PALETAS[0].destaque,
-  fonte: "moderna",
-  raio: "medio",
-  temaPadrao: "sistema",
+  fonte: "aurora",
+  raio: "reto",
+  temaPadrao: "claro",
 };
 
 /** Textos padrão quando o subtítulo está vazio. */
@@ -235,8 +237,8 @@ export function corTextoSobre(fundo: string) {
 }
 
 // Fundos dos temas (iguais a app/globals.css)
-const CLARO = { superficie: "#FFFFFF", fundo: "#FAF8F7" };
-const ESCURO = { superficie: "#1D181C", superficie2: "#272026" };
+const CLARO = { superficie: "#FFFDF8", fundo: "#F7F2E8" };
+const ESCURO = { superficie: "#0A1F3D", superficie2: "#12294A" };
 
 /** No escuro, cores muito escuras "somem": clareia até ter contraste mínimo com o fundo. */
 function corParaEscuro(cor: string) {

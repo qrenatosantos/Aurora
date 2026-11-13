@@ -21,12 +21,12 @@
 /* Modo escuro por classe (.dark no <html>), controlado pelo botão de tema. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Cores da marca (padrão: "Comercial", azul royal + âmbar).
+/* Cores da marca (padrão: "Aurora", azul-marinho + dourado, as do site).
    O layout injeta as escolhidas pelo dono (tela Personalização) por cima. */
 :root {
-  --marca: #1e40af;
+  --marca: #021938;
   --marca-texto: #ffffff; /* texto sobre a cor da marca */
-  --destaque: #f59e0b; /* âmbar */
+  --destaque: #c6a86a; /* dourado */
   --destaque-texto: #111111; /* texto sobre a cor de destaque */
 }
 
@@ -37,12 +37,13 @@
   --menta: #10b981;
   --menta-texto: #047857;
   --menta-suave: #d8f6ea;
-  --fundo: #f5f6fb;
-  --superficie: #ffffff;
-  --superficie-2: #f0f1f8;
-  --borda: #e1e4ef;
-  --texto: #111827;
-  --texto-2: #586072;
+  /* neutros quentes do site: creme, papel e tinta */
+  --fundo: #f7f2e8;
+  --superficie: #fffdf8;
+  --superficie-2: #f1eadb;
+  --borda: #e2d9c6;
+  --texto: #13213a;
+  --texto-2: #4f5a6b;
   --ok: #047857;
   --ok-suave: #d8f6ea;
   --alerta: #b45309;
@@ -67,12 +68,13 @@
   --menta: #34d399;
   --menta-texto: #34d399;
   --menta-suave: #0f3326;
-  --fundo: #0d0f17;
-  --superficie: #161925;
-  --superficie-2: #1f2332;
-  --borda: #2c3144;
-  --texto: #eef0f7;
-  --texto-2: #a4aabd;
+  /* escuro: os azuis-marinhos do site */
+  --fundo: #01112a;
+  --superficie: #0a1f3d;
+  --superficie-2: #12294a;
+  --borda: #24406a;
+  --texto: #f7f2e8;
+  --texto-2: #b9c0cc;
   --ok: #34d399;
   --ok-suave: #0f3326;
   --alerta: #fbbf24;
@@ -96,6 +98,10 @@
 /* FONTES: combinação escolhida na Personalização (atributo data-fonte no <html>).
    As variáveis --ff-* vêm de app/fontes.ts (next/font). */
 :root,
+[data-fonte="aurora"] {
+  --fonte-texto: var(--ff-dm-sans);
+  --fonte-titulo: var(--ff-cormorant);
+}
 [data-fonte="moderna"] {
   --fonte-texto: var(--ff-inter);
   --fonte-titulo: var(--ff-inter);

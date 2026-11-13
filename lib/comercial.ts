@@ -30,6 +30,8 @@ export const STATUS_PROPOSTA: Record<
 > = {
   rascunho: { nome: "Rascunho", cor: "neutro" },
   aguardando_aprovacao: { nome: "Aguardando aprovação", cor: "alerta" },
+  ajustes_solicitados: { nome: "Ajustes solicitados", cor: "perigo" },
+  aprovada: { nome: "Aprovada", cor: "marca" },
   enviada: { nome: "Enviada", cor: "info" },
   aceita: { nome: "Aceita", cor: "ok" },
   recusada: { nome: "Recusada", cor: "perigo" },
