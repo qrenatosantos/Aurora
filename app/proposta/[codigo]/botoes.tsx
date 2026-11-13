@@ -38,7 +38,7 @@ export function FormAceite({ codigo, total }: { codigo: string; total: string })
       <label className="flex items-start gap-3 text-sm">
         <input type="checkbox" name="concordo" className="mt-0.5 size-5 shrink-0 accent-[var(--marca)]" aria-invalid={erros.concordo ? true : undefined} />
         <span>
-          Li a proposta e concordo com os itens, valores ({total}) e condições. Sei que o aceite fica registrado com data, hora e endereço de
+          Li a proposta e concordo com o cardápio, o valor ({total}) e as condições. Sei que o aceite fica registrado com data, hora e endereço de
           internet (IP).
         </span>
       </label>

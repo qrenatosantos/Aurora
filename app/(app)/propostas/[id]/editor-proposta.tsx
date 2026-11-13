@@ -1,121 +1,179 @@
 "use client";
 
 /**
- * Editor da proposta (rascunho): itens com desconto, condições, prazo e validade.
- * Desconto acima do máximo do produto é permitido aqui, mas a proposta só pode ser
- * ENVIADA depois que o gestor aprovar (regra do banco).
+ * EDITOR DA PROPOSTA DA AURORA: capa, dados do evento, cardápio, investimento
+ * (com a calculadora de insumos), condições, termos e agradecimento.
+ * Salva tudo de uma vez (ação salvarProposta → função salvar_proposta do banco).
  */
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { AlertTriangle, Save, Trash2 } from "lucide-react";
-import { salvarProposta } from "@/app/(app)/propostas/actions";
+import { ArrowDown, ArrowUp, Calculator, Plus, Save, Trash2 } from "lucide-react";
+import { calcularParaProposta, salvarProposta } from "@/app/(app)/propostas/actions";
+import { MemoriaCalculo } from "@/components/aurora/memoria-calculo";
 import { Botao } from "@/components/ui/botao";
 import { AreaTexto, Entrada, Selecao } from "@/components/ui/campo";
 import { Cartao } from "@/components/ui/cartao";
+import { EntradaMoeda, valorCampo } from "@/components/ui/controles";
 import { useToast } from "@/components/ui/toast";
-import { fmtQtd, moedaInteira, totaisItens, totalItem } from "@/lib/comercial";
+import { LINHAS, TIPOS_EVENTO, entradaESaldo } from "@/lib/aurora";
 import { formatarMoeda, lerMoeda } from "@/lib/formatar";
-import type { Produto, Proposta, PropostaItem } from "@/lib/tipos";
-import { cn } from "@/lib/utils";
+import type { Drink, DrinkCardapio, Proposta, PropostaItem, ResultadoCalculo } from "@/lib/tipos";
 
-type Linha = {
-  chave: string;
-  produto_id: string | null;
-  descricao: string;
-  detalhes: string;
-  unidade: string;
-  quantidade: string;
-  preco: string;
-  desconto: string;
+type ItemEditor = { chave: number; descricao: string; detalhes: string; quantidade: string; preco: string };
+const txt = (v: string | number | null | undefined) => (v === null || v === undefined ? "" : String(v).replace(".", ","));
+const numOuNulo = (v: string) => {
+  const s = v.trim().replace(/\./g, "").replace(",", ".");
+  if (s === "") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
 };
 
-const num = (t: string) => lerMoeda(t);
-const txt = (n: number | string) => String(Number(n)).replace(".", ",");
+function Rotulo({ para, children, ajuda }: { para: string; children: React.ReactNode; ajuda?: string }) {
+  return (
+    <label htmlFor={para} className="mb-1.5 block text-sm font-medium text-texto">
+      {children}
+      {ajuda && <span className="mt-0.5 block text-xs font-normal text-texto-2">{ajuda}</span>}
+    </label>
+  );
+}
 
-export function EditorProposta({
-  proposta,
-  itens,
-  produtos,
-  descontoAvulso,
-}: {
-  proposta: Proposta;
-  itens: PropostaItem[];
-  produtos: Produto[];
-  descontoAvulso: number;
-}) {
+export function EditorProposta({ proposta, itens, drinks, gestor }: { proposta: Proposta; itens: PropostaItem[]; drinks: Drink[]; gestor: boolean }) {
   const router = useRouter();
   const toast = useToast();
-  const [pendente, iniciar] = useTransition();
-  const porId = new Map(produtos.map((p) => [p.id, p]));
-  const [cab, setCab] = useState({
+  const [salvando, iniciarSalvar] = useTransition();
+  const [calculando, iniciarCalculo] = useTransition();
+  const [mudou, setMudou] = useState(false);
+  const ev = proposta.evento ?? {};
+
+  const [c, setC] = useState({
     titulo: proposta.titulo,
     validade: proposta.validade,
+    capa_titulo: proposta.capa_titulo ?? "",
+    capa_subtitulo: proposta.capa_subtitulo ?? "",
+    capa_foto_url: proposta.capa_foto_url ?? "",
+    apresentacao: proposta.apresentacao ?? "",
+    descricao_servico: proposta.descricao_servico ?? "",
+    mensagem_final: proposta.mensagem_final ?? "",
+    foto_final_url: proposta.foto_final_url ?? "",
     condicoes_pagamento: proposta.condicoes_pagamento ?? "",
-    prazo_entrega: proposta.prazo_entrega ?? "",
     observacoes: proposta.observacoes ?? "",
+    nota_interna: proposta.nota_interna ?? "",
+    pacote_nome: proposta.pacote_nome ?? "",
+    linha: proposta.linha ?? "tradicional",
+    entrada_pct: txt(proposta.entrada_pct),
+    entrada_dias_antes: txt(proposta.entrada_dias_antes),
+    saldo_dias_antes: txt(proposta.saldo_dias_antes),
+    cancelamento_aviso_dias: txt(proposta.cancelamento_aviso_dias),
+    cancelamento_multa_pct: txt(proposta.cancelamento_multa_pct),
+    taxa_quebra: proposta.taxa_quebra === null ? "" : valorCampo(proposta.taxa_quebra),
+    foro: proposta.foro ?? "",
+    ev_tipo: ev.tipo ?? "",
+    ev_nome: ev.nome ?? "",
+    ev_data: ev.data ?? "",
+    ev_mes: ev.mes_previsto?.slice(0, 7) ?? "",
+    ev_hora: ev.hora_inicio ?? "",
+    ev_duracao: txt(ev.duracao_horas),
+    ev_cidade: ev.cidade ?? "",
+    ev_uf: ev.uf ?? "",
+    ev_local: ev.local ?? "",
+    ev_convidados: txt(ev.convidados),
+    ev_faixa: ev.convidados_faixa ?? "",
   });
-  const [linhas, setLinhas] = useState<Linha[]>(() =>
-    itens.map((i) => ({
-      chave: i.id,
-      produto_id: i.produto_id,
-      descricao: i.descricao,
-      detalhes: i.detalhes ?? "",
-      unidade: i.unidade,
-      quantidade: txt(i.quantidade),
-      preco: txt(i.preco_unitario),
-      desconto: txt(i.desconto_pct),
-    })),
+  const [cardapio, setCardapio] = useState<DrinkCardapio[]>(proposta.cardapio ?? []);
+  const [linhas, setLinhas] = useState<ItemEditor[]>(
+    itens.map((i, k) => ({ chave: k, descricao: i.descricao, detalhes: i.detalhes ?? "", quantidade: txt(Number(i.quantidade)), preco: valorCampo(i.preco_unitario) })),
   );
-  const [mudou, setMudou] = useState(false);
+  const [proxima, setProxima] = useState(itens.length);
+  const [calculo, setCalculo] = useState<ResultadoCalculo | null>(null);
+  const [calculoUsado, setCalculoUsado] = useState<ResultadoCalculo | null | undefined>(undefined);
+  const [drinkNovo, setDrinkNovo] = useState("");
 
-  const limite = (l: Linha) => (l.produto_id ? Number(porId.get(l.produto_id)?.desconto_max ?? 0) : descontoAvulso);
-  const alterar = (chave: string, campo: keyof Linha, valor: string) => {
-    setLinhas((ls) => ls.map((l) => (l.chave === chave ? { ...l, [campo]: valor } : l)));
+  const campo = (nome: keyof typeof c) => ({
+    id: `p-${nome}`,
+    value: c[nome],
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      setC((a) => ({ ...a, [nome]: e.target.value }));
+      setMudou(true);
+    },
+  });
+  const total = linhas.reduce((s, l) => s + (numOuNulo(l.quantidade) ?? 0) * lerMoeda(l.preco), 0);
+  const pagamento = entradaESaldo(total, numOuNulo(c.entrada_pct));
+  const mudarCardapio = (fn: (lista: DrinkCardapio[]) => DrinkCardapio[]) => {
+    setCardapio(fn);
     setMudou(true);
   };
-  const mudarCab = (campo: keyof typeof cab, valor: string) => {
-    setCab((c) => ({ ...c, [campo]: valor }));
+  const mudarLinha = (chave: number, campoLinha: keyof ItemEditor, valor: string) => {
+    setLinhas((ls) => ls.map((l) => (l.chave === chave ? { ...l, [campoLinha]: valor } : l)));
     setMudou(true);
   };
+  const disponiveis = drinks.filter((d) => d.ativo && !cardapio.some((x) => x.drink_id === d.id));
 
-  function adicionar(produtoId: string) {
-    const p = porId.get(produtoId);
-    setLinhas((ls) => [
-      ...ls,
-      {
-        chave: `novo-${Date.now()}`,
-        produto_id: p?.id ?? null,
-        descricao: p?.nome ?? "",
-        detalhes: p?.descricao ?? "",
-        unidade: p?.unidade ?? "un",
-        quantidade: "1",
-        preco: txt(p?.preco ?? 0),
-        desconto: "0",
-      },
-    ]);
-    setMudou(true);
+  function calcular() {
+    iniciarCalculo(async () => {
+      const r = await calcularParaProposta({
+        drinks: cardapio.map((d) => d.drink_id).filter((x): x is string => Boolean(x)),
+        convidados: numOuNulo(c.ev_convidados),
+        duracao_horas: numOuNulo(c.ev_duracao),
+        linha: c.linha === "premium" ? "premium" : "tradicional",
+        cidade: c.ev_cidade,
+      });
+      if (r.ok && r.calculo) setCalculo(r.calculo);
+      else toast.erro(r.mensagem ?? "Não foi possível calcular.");
+    });
   }
 
-  const numericos = linhas.map((l) => ({ quantidade: num(l.quantidade), preco_unitario: num(l.preco), desconto_pct: num(l.desconto) }));
-  const t = totaisItens(numericos);
-  const acima = linhas.filter((l) => num(l.desconto) > limite(l));
+  function usarPreco() {
+    if (!calculo?.ok || !calculo.preco_sugerido) return;
+    const preco = valorCampo(calculo.preco_sugerido);
+    setLinhas((ls) => (ls.length ? ls.map((l, i) => (i === 0 ? { ...l, quantidade: "1", preco } : l)) : [{ chave: 0, descricao: "Serviço de bar e coquetelaria", detalhes: "", quantidade: "1", preco }]));
+    setCalculoUsado(calculo);
+    setMudou(true);
+    toast.info("Preço sugerido aplicado ao primeiro item. Salve para gravar.");
+  }
 
   function salvar() {
-    iniciar(async () => {
+    iniciarSalvar(async () => {
       const r = await salvarProposta(proposta.id, {
-        ...cab,
-        itens: linhas.map((l) => ({
-          produto_id: l.produto_id,
-          descricao: l.descricao.trim(),
-          detalhes: l.detalhes.trim(),
-          unidade: l.unidade.trim() || "un",
-          quantidade: num(l.quantidade),
-          preco_unitario: num(l.preco),
-          desconto_pct: num(l.desconto),
-        })),
+        titulo: c.titulo,
+        validade: c.validade,
+        capa_titulo: c.capa_titulo,
+        capa_subtitulo: c.capa_subtitulo,
+        capa_foto_url: c.capa_foto_url,
+        apresentacao: c.apresentacao,
+        descricao_servico: c.descricao_servico,
+        mensagem_final: c.mensagem_final,
+        foto_final_url: c.foto_final_url,
+        condicoes_pagamento: c.condicoes_pagamento,
+        observacoes: c.observacoes,
+        nota_interna: c.nota_interna,
+        pacote_nome: c.pacote_nome,
+        linha: c.linha === "premium" ? "premium" : "tradicional",
+        entrada_pct: numOuNulo(c.entrada_pct),
+        entrada_dias_antes: numOuNulo(c.entrada_dias_antes),
+        saldo_dias_antes: numOuNulo(c.saldo_dias_antes),
+        cancelamento_aviso_dias: numOuNulo(c.cancelamento_aviso_dias),
+        cancelamento_multa_pct: numOuNulo(c.cancelamento_multa_pct),
+        taxa_quebra: c.taxa_quebra.trim() === "" ? null : lerMoeda(c.taxa_quebra),
+        foro: c.foro,
+        evento: {
+          tipo: c.ev_tipo || null,
+          nome: c.ev_nome,
+          data: c.ev_data || null,
+          mes_previsto: !c.ev_data && c.ev_mes ? `${c.ev_mes}-01` : null,
+          hora_inicio: c.ev_hora ? c.ev_hora.slice(0, 5) : null,
+          duracao_horas: numOuNulo(c.ev_duracao),
+          cidade: c.ev_cidade,
+          uf: c.ev_uf,
+          local: c.ev_local,
+          convidados: numOuNulo(c.ev_convidados),
+          convidados_faixa: c.ev_faixa,
+        },
+        cardapio: cardapio.map((d) => ({ ...d, descricao: d.descricao ?? "", foto_url: d.foto_url ?? "" })),
+        itens: linhas.map((l) => ({ descricao: l.descricao, detalhes: l.detalhes, quantidade: numOuNulo(l.quantidade) ?? 0, preco_unitario: lerMoeda(l.preco) })),
+        ...(calculoUsado === undefined ? {} : { calculo: calculoUsado }),
       });
       if (r.ok) {
-        toast.sucesso(r.mensagem ?? "Salvo.");
+        toast.sucesso(r.mensagem ?? "Proposta salva.");
         setMudou(false);
         router.refresh();
       } else toast.erro(r.mensagem ?? "Não foi possível salvar.");
@@ -123,151 +181,366 @@ export function EditorProposta({
   }
 
   return (
-    <Cartao className="space-y-4 nao-imprimir">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">Montar a proposta</h2>
-        <Botao onClick={salvar} carregando={pendente} disabled={!mudou}>
-          <Save className="size-4" aria-hidden /> {mudou ? "Salvar alterações" : "Salvo"}
-        </Botao>
-      </div>
+    <div className="space-y-4 nao-imprimir">
+      {/* Capa */}
+      <Cartao className="space-y-3">
+        <h2 className="text-base font-semibold">Capa e identificação</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Rotulo para="p-capa_titulo" ajuda="A frase grande da capa. Ex.: Um brinde ao primeiro ano do José Miguel.">
+              Título da capa
+            </Rotulo>
+            <Entrada {...campo("capa_titulo")} maxLength={160} />
+          </div>
+          <div className="sm:col-span-2">
+            <Rotulo para="p-capa_subtitulo">Frase de apoio</Rotulo>
+            <Entrada {...campo("capa_subtitulo")} maxLength={240} />
+          </div>
+          <div>
+            <Rotulo para="p-titulo" ajuda="Só para a equipe (lista de propostas).">
+              Nome interno da proposta
+            </Rotulo>
+            <Entrada {...campo("titulo")} maxLength={120} />
+          </div>
+          <div>
+            <Rotulo para="p-validade" ajuda="A data fica reservada até este dia.">
+              Válida até
+            </Rotulo>
+            <Entrada {...campo("validade")} type="date" />
+          </div>
+          <div className="sm:col-span-2">
+            <Rotulo para="p-capa_foto_url" ajuda="Opcional. Cole o endereço https:// de uma foto. Vazio = foto padrão da Aurora.">
+              Foto da capa
+            </Rotulo>
+            <Entrada {...campo("capa_foto_url")} maxLength={500} placeholder="https://..." />
+          </div>
+          <div className="sm:col-span-2">
+            <Rotulo para="p-apresentacao" ajuda="Opcional. Ex.: Para o primeiro aniversário do José Miguel, um serviço de bar caprichado e tranquilo para a família.">
+              Frase da página “Partes da proposta”
+            </Rotulo>
+            <AreaTexto {...campo("apresentacao")} rows={2} maxLength={400} />
+          </div>
+        </div>
+      </Cartao>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
-        <label className="text-sm font-medium">
-          Título
-          <Entrada value={cab.titulo} onChange={(e) => mudarCab("titulo", e.target.value)} maxLength={120} />
-        </label>
-        <label className="text-sm font-medium">
-          Válida até
-          <Entrada type="date" value={cab.validade} onChange={(e) => mudarCab("validade", e.target.value)} />
-        </label>
-      </div>
+      {/* Evento */}
+      <Cartao className="space-y-3">
+        <h2 className="text-base font-semibold">Dados do evento nesta proposta</h2>
+        <p className="text-sm text-texto-2">Cópia dos dados do negócio no momento em que a proposta foi criada. Alterar aqui muda só o documento.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <Rotulo para="p-ev_tipo">Tipo</Rotulo>
+            <Selecao {...campo("ev_tipo")}>
+              <option value="">— a definir —</option>
+              {TIPOS_EVENTO.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
+                </option>
+              ))}
+            </Selecao>
+          </div>
+          <div className="sm:col-span-2">
+            <Rotulo para="p-ev_nome">Nome do evento</Rotulo>
+            <Entrada {...campo("ev_nome")} maxLength={120} placeholder="Ex.: 1 ano do José Miguel" />
+          </div>
+          <div>
+            <Rotulo para="p-ev_data">Data</Rotulo>
+            <Entrada {...campo("ev_data")} type="date" />
+          </div>
+          <div>
+            <Rotulo para="p-ev_hora">Início</Rotulo>
+            <Entrada {...campo("ev_hora")} type="time" />
+          </div>
+          <div>
+            <Rotulo para="p-ev_duracao">Duração (horas)</Rotulo>
+            <Entrada {...campo("ev_duracao")} inputMode="decimal" />
+          </div>
+          {!c.ev_data && (
+            <div>
+              <Rotulo para="p-ev_mes">Mês previsto (sem data)</Rotulo>
+              <Entrada {...campo("ev_mes")} type="month" />
+            </div>
+          )}
+          <div>
+            <Rotulo para="p-ev_local">Local</Rotulo>
+            <Entrada {...campo("ev_local")} maxLength={160} />
+          </div>
+          <div className="grid grid-cols-[1fr_4.5rem] gap-2">
+            <div>
+              <Rotulo para="p-ev_cidade">Cidade</Rotulo>
+              <Entrada {...campo("ev_cidade")} maxLength={80} />
+            </div>
+            <div>
+              <Rotulo para="p-ev_uf">UF</Rotulo>
+              <Entrada {...campo("ev_uf")} maxLength={2} className="uppercase" />
+            </div>
+          </div>
+          <div>
+            <Rotulo para="p-ev_convidados">Convidados</Rotulo>
+            <Entrada {...campo("ev_convidados")} inputMode="numeric" />
+          </div>
+          {!c.ev_convidados && (
+            <div>
+              <Rotulo para="p-ev_faixa">Ou estimativa</Rotulo>
+              <Entrada {...campo("ev_faixa")} maxLength={40} placeholder="Ex.: 51 a 100" />
+            </div>
+          )}
+        </div>
+      </Cartao>
 
-      <ul className="space-y-2">
-        {linhas.map((l, i) => {
-          const lim = limite(l);
-          const passou = num(l.desconto) > lim;
-          return (
-            <li key={l.chave} className={cn("rounded-xl border p-3", passou ? "border-alerta-forte bg-alerta-suave/40" : "border-borda")}>
-              <div className="flex items-start gap-2">
-                <span className="mt-3 w-5 shrink-0 text-xs font-bold text-texto-2">{i + 1}.</span>
-                <div className="grid min-w-0 flex-1 gap-2">
-                  <label>
-                    <span className="sr-only">Descrição do item {i + 1}</span>
-                    <Entrada value={l.descricao} onChange={(e) => alterar(l.chave, "descricao", e.target.value)} maxLength={200} placeholder="Descrição" />
-                  </label>
-                  <label>
-                    <span className="sr-only">Detalhes do item {i + 1}</span>
-                    <AreaTexto
-                      rows={2}
-                      className="min-h-0 text-sm"
-                      value={l.detalhes}
-                      onChange={(e) => alterar(l.chave, "detalhes", e.target.value)}
-                      maxLength={1000}
-                      placeholder="Detalhes (opcional): especificação, garantia..."
-                    />
-                  </label>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <label className="text-xs text-texto-2">
-                      Qtd.
-                      <Entrada inputMode="decimal" value={l.quantidade} onChange={(e) => alterar(l.chave, "quantidade", e.target.value)} />
-                    </label>
-                    <label className="text-xs text-texto-2">
-                      Unidade
-                      <Entrada value={l.unidade} maxLength={20} onChange={(e) => alterar(l.chave, "unidade", e.target.value)} />
-                    </label>
-                    <label className="text-xs text-texto-2">
-                      Preço unit. (R$)
-                      <Entrada inputMode="decimal" value={l.preco} onChange={(e) => alterar(l.chave, "preco", e.target.value)} />
-                    </label>
-                    <label className="text-xs text-texto-2">
-                      Desconto % (máx. {fmtQtd(lim)})
-                      <Entrada
-                        inputMode="decimal"
-                        value={l.desconto}
-                        aria-invalid={passou || undefined}
-                        onChange={(e) => alterar(l.chave, "desconto", e.target.value)}
-                      />
-                    </label>
-                  </div>
-                  <p className="flex items-center justify-between gap-2 text-sm">
-                    {passou ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-alerta">
-                        <AlertTriangle className="size-3.5" aria-hidden /> Acima do máximo: precisa de aprovação do gestor
-                      </span>
-                    ) : (
-                      <span />
-                    )}
-                    <strong className="num">{formatarMoeda(totalItem(num(l.quantidade), num(l.preco), num(l.desconto)))}</strong>
-                  </p>
-                </div>
+      {/* Cardápio */}
+      <Cartao className="space-y-3">
+        <h2 className="text-base font-semibold">Cardápio ({cardapio.length})</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Rotulo para="p-pacote_nome" ajuda="Aparece no cardápio. Deixe vazio para cardápio personalizado.">
+              Pacote
+            </Rotulo>
+            <Entrada {...campo("pacote_nome")} maxLength={80} />
+          </div>
+          <div>
+            <Rotulo para="p-linha">Linha de bebidas</Rotulo>
+            <Selecao {...campo("linha")}>
+              {LINHAS.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.nome}
+                </option>
+              ))}
+            </Selecao>
+          </div>
+        </div>
+        {cardapio.length === 0 && <p className="text-sm text-texto-2">Nenhum drink. Adicione do catálogo abaixo.</p>}
+        <ul className="space-y-2">
+          {cardapio.map((d, i) => (
+            <li key={`${d.drink_id ?? "livre"}-${i}`} className="grid gap-2 rounded-xl border border-borda p-2 sm:grid-cols-[14rem_1fr_auto] sm:items-start">
+              <Entrada
+                aria-label={`Nome do drink ${i + 1}`}
+                value={d.nome}
+                maxLength={80}
+                onChange={(e) => mudarCardapio((l) => l.map((x, k) => (k === i ? { ...x, nome: e.target.value } : x)))}
+              />
+              <Entrada
+                aria-label={`Descrição do drink ${i + 1}`}
+                value={d.descricao ?? ""}
+                maxLength={300}
+                placeholder="Descrição no cardápio"
+                onChange={(e) => mudarCardapio((l) => l.map((x, k) => (k === i ? { ...x, descricao: e.target.value } : x)))}
+              />
+              <div className="flex justify-end gap-1">
                 <button
                   type="button"
-                  aria-label={`Remover item ${i + 1}`}
-                  onClick={() => {
-                    setLinhas((ls) => ls.filter((x) => x.chave !== l.chave));
-                    setMudou(true);
-                  }}
-                  className="grid size-11 shrink-0 place-items-center rounded-xl text-texto-2 hover:bg-perigo-suave hover:text-perigo"
+                  aria-label={`Subir ${d.nome}`}
+                  disabled={i === 0}
+                  className="grid size-11 place-items-center rounded-xl text-texto-2 hover:bg-superficie-2 disabled:opacity-30"
+                  onClick={() => mudarCardapio((l) => l.map((x, k) => (k === i - 1 ? l[i] : k === i ? l[i - 1] : x)))}
+                >
+                  <ArrowUp className="size-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Descer ${d.nome}`}
+                  disabled={i === cardapio.length - 1}
+                  className="grid size-11 place-items-center rounded-xl text-texto-2 hover:bg-superficie-2 disabled:opacity-30"
+                  onClick={() => mudarCardapio((l) => l.map((x, k) => (k === i + 1 ? l[i] : k === i ? l[i + 1] : x)))}
+                >
+                  <ArrowDown className="size-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Tirar ${d.nome} do cardápio`}
+                  className="grid size-11 place-items-center rounded-xl text-texto-2 hover:bg-superficie-2 hover:text-perigo"
+                  onClick={() => mudarCardapio((l) => l.filter((_, k) => k !== i))}
                 >
                   <Trash2 className="size-4" aria-hidden />
                 </button>
               </div>
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-48 flex-1">
+            <Rotulo para="p-drink-novo">Adicionar drink do catálogo</Rotulo>
+            <Selecao id="p-drink-novo" value={drinkNovo} onChange={(e) => setDrinkNovo(e.target.value)}>
+              <option value="">— escolha —</option>
+              {disponiveis.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nome}
+                  {d.alcoolico ? "" : " (sem álcool)"}
+                </option>
+              ))}
+            </Selecao>
+          </div>
+          <Botao
+            variante="secundario"
+            disabled={!drinkNovo}
+            onClick={() => {
+              const d = drinks.find((x) => x.id === drinkNovo);
+              if (!d) return;
+              mudarCardapio((l) => [...l, { drink_id: d.id, nome: d.nome, descricao: d.descricao, foto_url: d.foto_url, alcoolico: d.alcoolico, copo: d.copo, categoria: d.categoria }]);
+              setDrinkNovo("");
+            }}
+          >
+            <Plus className="size-4" aria-hidden /> Adicionar
+          </Botao>
+        </div>
+      </Cartao>
 
-      <label className="block">
-        <span className="sr-only">Adicionar item</span>
-        <Selecao value="" onChange={(e) => e.target.value && adicionar(e.target.value === "avulso" ? "" : e.target.value)}>
-          <option value="">+ Adicionar produto ou serviço…</option>
-          {produtos
-            .filter((p) => p.ativo)
-            .map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome} — {moedaInteira(p.preco)}/{p.unidade} (desc. máx. {fmtQtd(p.desconto_max)}%)
-              </option>
-            ))}
-          <option value="avulso">Item avulso (fora do catálogo)</option>
-        </Selecao>
-      </label>
+      {/* Investimento */}
+      <Cartao className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-semibold">Investimento</h2>
+          <p className="num text-xl font-extrabold text-marca-forte">{formatarMoeda(total)}</p>
+        </div>
+        {proposta.preco_pendente && total <= 0 && (
+          <p className="rounded-xl bg-alerta-suave p-3 text-sm text-alerta">
+            <strong>Preço a definir.</strong> Esta proposta foi montada sem valor{proposta.origem === "agente" ? " (o agente não informa preço sem regras aprovadas)" : ""}. Use a
+            calculadora abaixo ou digite o valor.
+          </p>
+        )}
+        <div>
+          <Rotulo para="p-descricao_servico" ajuda="Texto ao lado do valor. Ex.: 4 horas de atendimento com as 4 opções do cardápio, preparo na hora e gestão dos insumos.">
+            Descrição do serviço
+          </Rotulo>
+          <AreaTexto {...campo("descricao_servico")} rows={2} maxLength={400} />
+        </div>
+        <ul className="space-y-2">
+          {linhas.map((l, i) => (
+            <li key={l.chave} className="grid gap-2 rounded-xl border border-borda p-2 sm:grid-cols-[1fr_5rem_10rem_auto] sm:items-start">
+              <div className="space-y-2">
+                <Entrada aria-label={`Descrição do item ${i + 1}`} value={l.descricao} maxLength={200} onChange={(e) => mudarLinha(l.chave, "descricao", e.target.value)} />
+                <Entrada aria-label={`Detalhes do item ${i + 1}`} value={l.detalhes} maxLength={300} placeholder="Detalhes (opcional)" onChange={(e) => mudarLinha(l.chave, "detalhes", e.target.value)} />
+              </div>
+              <Entrada aria-label={`Quantidade do item ${i + 1}`} inputMode="decimal" value={l.quantidade} onChange={(e) => mudarLinha(l.chave, "quantidade", e.target.value)} />
+              <EntradaMoeda aria-label={`Valor do item ${i + 1}`} value={l.preco} onChange={(e) => mudarLinha(l.chave, "preco", e.target.value)} placeholder="0,00" />
+              <button
+                type="button"
+                aria-label={`Remover item ${i + 1}`}
+                disabled={linhas.length === 1}
+                className="grid size-11 place-items-center justify-self-end rounded-xl text-texto-2 hover:bg-superficie-2 hover:text-perigo disabled:opacity-30"
+                onClick={() => {
+                  setLinhas((ls) => ls.filter((x) => x.chave !== l.chave));
+                  setMudou(true);
+                }}
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap gap-2">
+          <Botao
+            variante="fantasma"
+            onClick={() => {
+              setLinhas((ls) => [...ls, { chave: proxima, descricao: "", detalhes: "", quantidade: "1", preco: "" }]);
+              setProxima((n) => n + 1);
+              setMudou(true);
+            }}
+          >
+            <Plus className="size-4" aria-hidden /> Adicionar item (ex.: drink premium, hora extra)
+          </Botao>
+          <Botao variante="secundario" carregando={calculando} onClick={calcular}>
+            <Calculator className="size-4" aria-hidden /> Calcular pela calculadora
+          </Botao>
+        </div>
+        {(calculo ?? proposta.calculo) && (
+          <details open={Boolean(calculo)} className="rounded-xl border border-borda p-3">
+            <summary className="cursor-pointer text-sm font-semibold">
+              Memória de cálculo {calculo ? "(conta de agora)" : "(da última vez que foi salva)"} — só a equipe vê
+            </summary>
+            <div className="mt-3">
+              <MemoriaCalculo calculo={(calculo ?? proposta.calculo)!} />
+              {calculo?.ok && (
+                <Botao className="mt-3" onClick={usarPreco}>
+                  Usar o preço sugerido ({formatarMoeda(calculo.preco_sugerido)})
+                </Botao>
+              )}
+            </div>
+          </details>
+        )}
 
-      <div className="ml-auto grid max-w-xs gap-1 text-sm">
-        <p className="flex justify-between">
-          <span className="text-texto-2">Subtotal</span> <span className="num">{formatarMoeda(t.subtotal)}</span>
+        <h3 className="pt-2 text-sm font-semibold">Pagamento</h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <Rotulo para="p-entrada_pct">Entrada (%)</Rotulo>
+            <Entrada {...campo("entrada_pct")} inputMode="decimal" />
+          </div>
+          <div>
+            <Rotulo para="p-entrada_dias_antes">Entrada até (dias antes)</Rotulo>
+            <Entrada {...campo("entrada_dias_antes")} inputMode="numeric" />
+          </div>
+          <div>
+            <Rotulo para="p-saldo_dias_antes">Saldo até (dias antes)</Rotulo>
+            <Entrada {...campo("saldo_dias_antes")} inputMode="numeric" />
+          </div>
+        </div>
+        <p className="text-sm text-texto-2">
+          {pagamento
+            ? `Entrada de ${formatarMoeda(pagamento.entrada)} e saldo de ${formatarMoeda(pagamento.saldo)}.`
+            : "Sem percentual de entrada, a proposta mostra só o valor total. O padrão vem de Configurações ▸ Propostas e agenda."}
         </p>
-        <p className="flex justify-between">
-          <span className="text-texto-2">Descontos</span> <span className="num">−{formatarMoeda(t.desconto)}</span>
-        </p>
-        <p className="flex justify-between text-lg font-extrabold">
-          <span>Total</span> <span className="num">{formatarMoeda(t.total)}</span>
-        </p>
-      </div>
-      {acima.length > 0 && (
-        <p className="rounded-xl bg-alerta-suave p-3 text-sm text-alerta">
-          {acima.length} item(ns) com desconto acima do permitido. Depois de salvar, use “Pedir aprovação ao gestor”.
-        </p>
-      )}
+        <div>
+          <Rotulo para="p-condicoes_pagamento">Observação sobre pagamento (opcional)</Rotulo>
+          <AreaTexto {...campo("condicoes_pagamento")} rows={2} maxLength={1000} />
+        </div>
+      </Cartao>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-sm font-medium">
-          Condições de pagamento
-          <AreaTexto rows={3} maxLength={1000} value={cab.condicoes_pagamento} onChange={(e) => mudarCab("condicoes_pagamento", e.target.value)} />
-        </label>
-        <label className="text-sm font-medium">
-          Prazo de entrega
-          <AreaTexto rows={3} maxLength={300} value={cab.prazo_entrega} onChange={(e) => mudarCab("prazo_entrega", e.target.value)} />
-        </label>
-      </div>
-      <label className="block text-sm font-medium">
-        Observações (aparecem para o cliente)
-        <AreaTexto rows={3} maxLength={2000} value={cab.observacoes} onChange={(e) => mudarCab("observacoes", e.target.value)} />
-      </label>
-      <div className="flex justify-end">
-        <Botao onClick={salvar} carregando={pendente} disabled={!mudou} className="w-full sm:w-auto">
+      {/* Termos e fecho */}
+      <Cartao className="space-y-3">
+        <h2 className="text-base font-semibold">Termos e agradecimento</h2>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div>
+            <Rotulo para="p-cancelamento_aviso_dias">Cancelamento: aviso (dias)</Rotulo>
+            <Entrada {...campo("cancelamento_aviso_dias")} inputMode="numeric" />
+          </div>
+          <div>
+            <Rotulo para="p-cancelamento_multa_pct">Multa (%)</Rotulo>
+            <Entrada {...campo("cancelamento_multa_pct")} inputMode="decimal" />
+          </div>
+          <div>
+            <Rotulo para="p-taxa_quebra">Taxa de quebra</Rotulo>
+            <EntradaMoeda {...campo("taxa_quebra")} placeholder="0,00" />
+          </div>
+          <div>
+            <Rotulo para="p-foro">Foro</Rotulo>
+            <Entrada {...campo("foro")} maxLength={120} />
+          </div>
+        </div>
+        <div>
+          <Rotulo para="p-observacoes" ajuda="Opcional. Aparece no rodapé dos termos.">
+            Observações para o cliente
+          </Rotulo>
+          <AreaTexto {...campo("observacoes")} rows={2} maxLength={2000} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Rotulo para="p-mensagem_final" ajuda="Vazio = mensagem padrão.">
+              Mensagem da página final
+            </Rotulo>
+            <AreaTexto {...campo("mensagem_final")} rows={3} maxLength={400} />
+          </div>
+          <div>
+            <Rotulo para="p-foto_final_url" ajuda="Opcional (ex.: foto enviada pelo cliente, com autorização dele).">
+              Foto da página final
+            </Rotulo>
+            <Entrada {...campo("foto_final_url")} maxLength={500} placeholder="https://..." />
+          </div>
+        </div>
+        <div>
+          <Rotulo para="p-nota_interna" ajuda="Não aparece para o cliente. Recado de quem montou para quem aprova.">
+            Nota interna
+          </Rotulo>
+          <AreaTexto {...campo("nota_interna")} rows={2} maxLength={1000} />
+        </div>
+      </Cartao>
+
+      <div className="sticky bottom-20 z-10 flex items-center justify-end gap-3 rounded-2xl border border-borda bg-superficie/95 p-3 shadow-lg backdrop-blur md:bottom-4">
+        <p className="mr-auto text-sm text-texto-2" role="status">
+          {mudou ? "Há alterações não salvas." : gestor ? "Tudo salvo." : "Tudo salvo. Envie para aprovação quando estiver pronta."}
+        </p>
+        <Botao carregando={salvando} disabled={!mudou} onClick={salvar}>
           <Save className="size-4" aria-hidden /> Salvar proposta
         </Botao>
       </div>
-    </Cartao>
+    </div>
   );
 }

@@ -8,6 +8,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { type EstadoAcao, falha, sucesso } from "@/lib/acoes";
+import { ipDoPedido } from "@/lib/ip";
 import { createClient } from "@/lib/supabase/server";
 
 export async function aceitarPeloLink(codigo: string, nome: string, concordo: boolean): Promise<EstadoAcao> {
@@ -17,8 +18,7 @@ export async function aceitarPeloLink(codigo: string, nome: string, concordo: bo
   if (!concordo) return falha("Marque a caixa confirmando que leu e concorda com a proposta.", { concordo: "Confirme para aceitar." });
 
   const h = await headers();
-  // Na Vercel o IP real do visitante vem no 1º item de x-forwarded-for
-  const ip = (h.get("x-forwarded-for") ?? h.get("x-real-ip") ?? "").split(",")[0].trim().slice(0, 45) || null;
+  const ip = ipDoPedido(h);
   const navegador = (h.get("user-agent") ?? "").slice(0, 300) || null;
 
   const supabase = await createClient();
