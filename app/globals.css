@@ -333,6 +333,8 @@ body.arrastando * {
 .pa-capa { display: grid; grid-template-columns: 1fr; }
 .pa-capa-foto { min-height: 14rem; position: relative; }
 .pa-so-largo { display: none; }
+.pa-quadro-foto { position: relative; overflow: hidden; border-radius: 0.9em; min-height: 0; }
+.pa-quadro-foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 @media (min-width: 640px) {
   .pa-pagina { aspect-ratio: 16 / 9; }
@@ -341,6 +343,7 @@ body.arrastando * {
   .pa-grade-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .pa-grade-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pa-capa { grid-template-columns: 58.5% 41.5%; height: 100%; }
+  .pa-capa-final { grid-template-columns: 46% 54%; }
   .pa-capa-foto { min-height: 0; }
   .pa-so-largo { display: block; }
 }
@@ -364,6 +367,7 @@ body.arrastando * {
   .pa-grade-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .pa-grade-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pa-capa { grid-template-columns: 58.5% 41.5%; height: 100%; }
+  .pa-capa-final { grid-template-columns: 46% 54%; }
   .pa-so-largo { display: block; }
   /* na impressão da tela interna, só o documento sai */
   main#conteudo { max-width: none !important; padding: 0 !important; }

@@ -75,20 +75,20 @@ function Pagina({ rotulo, titulo, intro, numero, total, children }: { rotulo: st
     <section className="pa-pagina" aria-label={titulo}>
       <div className="pa-in">
         <div className="pa-regua" />
-        <p className="pa-rotulo" style={{ marginTop: "1.4em" }}>
+        <p className="pa-rotulo" style={{ marginTop: "1.1em" }}>
           {rotulo}
         </p>
-        <h2 className="pa-titulo" style={{ fontSize: "3.1em", marginTop: "0.25em" }}>
+        <h2 className="pa-titulo" style={{ fontSize: "2.8em", marginTop: "0.2em" }}>
           {titulo}
         </h2>
-        <div style={{ width: "6.5em", height: 2, background: "var(--pa-ouro)", margin: "0.9em 0 1em" }} />
+        <div style={{ width: "6.5em", height: 2, background: "var(--pa-ouro)", margin: "0.7em 0 0.9em" }} />
         {intro && (
-          <p className="pa-suave" style={{ marginBottom: "1.6em", maxWidth: "52em" }}>
+          <p className="pa-suave" style={{ marginBottom: "1.2em", maxWidth: "52em" }}>
             {intro}
           </p>
         )}
         <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
-        <div className="pa-rodape" style={{ marginTop: "1.4em" }}>
+        <div className="pa-rodape" style={{ marginTop: "1em" }}>
           <span>Aurora Bartenders</span>
           <span>
             {String(numero).padStart(2, "0")} / {String(total).padStart(2, "0")}
@@ -213,40 +213,40 @@ export function DocumentoAurora({
 
       {/* ------------------------------------------------------------ PARTES */}
       <Pagina rotulo={`${secao("partes")} / Apresentação`} titulo="Partes da proposta" intro={p.apresentacao} numero={n("partes")} total={total}>
-        <div className="pa-grade-2" style={{ gridTemplateColumns: undefined, height: "100%", alignItems: "stretch" }}>
-          <div className="pa-so-largo" style={{ overflow: "hidden", borderRadius: "0.9em", minHeight: 0 }}>
+        <div className="pa-grade-2" style={{ height: "100%", alignItems: "stretch" }}>
+          <div className="pa-so-largo pa-quadro-foto">
             {/* eslint-disable-next-line @next/next/no-img-element -- foto da equipe */}
-            <img src={foto("apresentacao")} alt="" className="pa-foto" />
+            <img src={foto("apresentacao")} alt="" />
           </div>
-          <div className="pa-cartao" style={{ padding: "1.8em 2.2em" }}>
+          <div className="pa-cartao" style={{ padding: "1.4em 2em" }}>
             <p className="pa-rotulo">Partes da proposta</p>
-            <div className="pa-regua" style={{ margin: "1.1em 0 1.3em", background: "rgba(247,242,232,0.16)" }} />
+            <div className="pa-regua" style={{ margin: "0.9em 0 1em", background: "rgba(247,242,232,0.16)" }} />
             <p className="pa-rotulo">Contratante</p>
-            <p className="pa-titulo" style={{ fontSize: "2.2em", marginTop: "0.25em" }}>
+            <p className="pa-titulo" style={{ fontSize: "2em", marginTop: "0.2em" }}>
               {cliente.nome || "A definir"}
             </p>
             <p className="pa-suave" style={{ marginTop: "0.4em" }}>
               {[ev.local, cidadeUf(ev.cidade, ev.uf)].filter(Boolean).join("  •  ")}
             </p>
-            <div className="pa-regua" style={{ margin: "1.3em 0", background: "rgba(247,242,232,0.16)" }} />
+            <div className="pa-regua" style={{ margin: "1em 0", background: "rgba(247,242,232,0.16)" }} />
             <p className="pa-rotulo">Contratado</p>
-            <p className="pa-titulo" style={{ fontSize: "2.2em", marginTop: "0.25em" }}>
+            <p className="pa-titulo" style={{ fontSize: "2em", marginTop: "0.2em" }}>
               {empresa.nome}
             </p>
             <p className="pa-suave" style={{ marginTop: "0.4em" }}>
               {[empresa.responsavel, cidadeUf(empresa.cidade, empresa.uf)].filter(Boolean).join("  •  ")}
             </p>
-            <p style={{ marginTop: "1.4em" }}>{t("frase_apresentacao")}</p>
+            <p style={{ marginTop: "1em" }}>{t("frase_apresentacao")}</p>
           </div>
         </div>
       </Pagina>
 
       {/* ------------------------------------------------------------ OBJETO */}
       <Pagina rotulo={`${secao("objeto")} / Nossos serviços`} titulo="Objeto do contrato" intro={t("objeto_intro")} numero={n("objeto")} total={total}>
-        <ol style={{ display: "grid", gap: "0.9em", listStyle: "none", margin: 0, padding: 0 }}>
+        <ol style={{ display: "grid", gap: "0.65em", listStyle: "none", margin: 0, padding: 0 }}>
           {[...itensComTitulo(t("objeto")), { titulo: "Validade da proposta", texto: `Válida até ${formatarData(p.validade)}, sujeita à disponibilidade da data e a ajustes por proximidade do evento.` }].map((item, i) => (
-            <li key={i} className="pa-cartao" style={{ display: "grid", gridTemplateColumns: "4.2em 1fr", alignItems: "center", padding: "1em 1.6em" }}>
-              <span className="pa-titulo pa-ouro" style={{ fontSize: "2em" }}>
+            <li key={i} className="pa-cartao" style={{ display: "grid", gridTemplateColumns: "4.2em 1fr", alignItems: "center", padding: "0.6em 1.6em" }}>
+              <span className="pa-titulo pa-ouro" style={{ fontSize: "1.9em" }}>
                 {String(i + 1).padStart(2, "0")}
               </span>
               <span>
@@ -277,9 +277,9 @@ export function DocumentoAurora({
             { rot: "Convidados", val: ev.convidados ? `${ev.convidados} pessoas` : ev.convidados_faixa ? `${ev.convidados_faixa} pessoas` : "A definir", sub: "Público estimado" },
             { rot: "Duração", val: ev.duracao_horas ? `${horasTexto(ev.duracao_horas)} de serviço` : "A definir", sub: ev.hora_inicio ? `Início às ${ev.hora_inicio}` : "Horário a combinar" },
           ].map((c) => (
-            <div key={c.rot} className="pa-cartao" style={{ padding: "1.4em 2em" }}>
+            <div key={c.rot} className="pa-cartao" style={{ padding: "1.2em 2em" }}>
               <p className="pa-rotulo">{c.rot}</p>
-              <p className="pa-titulo" style={{ fontSize: "2.2em", margin: "0.5em 0 0.45em" }}>
+              <p className="pa-titulo" style={{ fontSize: "2.1em", margin: "0.45em 0 0.4em" }}>
                 {c.val}
               </p>
               <p className="pa-suave">{c.sub || " "}</p>
@@ -325,11 +325,11 @@ export function DocumentoAurora({
       <Pagina rotulo={`${secao("compromissos")} / Nossos compromissos`} titulo="Compromissos Aurora" intro={t("compromissos_intro")} numero={n("compromissos")} total={total}>
         <div className="pa-grade-3" style={{ height: "100%" }}>
           {itensComTitulo(t("compromissos")).map((c, i) => (
-            <div key={i} className="pa-cartao" style={{ padding: "1.8em 2em" }}>
-              <p className="pa-titulo pa-ouro" style={{ fontSize: "3em" }}>
+            <div key={i} className="pa-cartao" style={{ padding: "1.5em 1.9em" }}>
+              <p className="pa-titulo pa-ouro" style={{ fontSize: "2.8em" }}>
                 {String(i + 1).padStart(2, "0")}
               </p>
-              <div style={{ width: "6em", height: 2, background: "var(--pa-ouro)", margin: "0.9em 0 1.3em" }} />
+              <div style={{ width: "6em", height: 2, background: "var(--pa-ouro)", margin: "0.7em 0 1.1em" }} />
               {c.titulo && (
                 <p className="pa-titulo" style={{ fontSize: "1.9em", marginBottom: "0.6em" }}>
                   {c.titulo}
@@ -346,15 +346,15 @@ export function DocumentoAurora({
       {/* ------------------------------------------------------------ VIDRARIA */}
       {copos.length > 0 && (
         <Pagina rotulo={`${secao("vidraria")} / Apresentação`} titulo="Vidraria & drinks" intro="Os recipientes utilizados no serviço." numero={n("vidraria")} total={total}>
-          <div className={copos.length >= 4 ? "pa-grade-4" : copos.length === 3 ? "pa-grade-3" : "pa-grade-2"}>
+          <div className={copos.length >= 4 ? "pa-grade-4" : "pa-grade-3"}>
             {copos.map((c, i) => {
               const info = COPOS.find((x) => x.id === c)!;
               const usados = cardapio.filter((d) => d.copo === c).map((d) => d.nome);
               return (
-                <div key={c} className="pa-cartao" style={{ padding: "1.4em 1.8em" }}>
+                <div key={c} className="pa-cartao" style={{ padding: "1.1em 1.6em" }}>
                   <p className="pa-rotulo">{String(i + 1).padStart(2, "0")}</p>
-                  <div className="pa-regua" style={{ margin: "0.8em 0", background: "rgba(247,242,232,0.16)" }} />
-                  <div style={{ width: "min(13em, 60%)", aspectRatio: "1", margin: "0 auto" }}>
+                  <div className="pa-regua" style={{ margin: "0.6em 0", background: "rgba(247,242,232,0.16)" }} />
+                  <div style={{ width: "min(9.5em, 55%)", aspectRatio: "1", margin: "0 auto" }}>
                     <Recipiente tipo={c} />
                   </div>
                   <div className="pa-regua" style={{ margin: "0.8em 0", background: "rgba(247,242,232,0.16)" }} />
@@ -366,7 +366,7 @@ export function DocumentoAurora({
               );
             })}
           </div>
-          <p className="pa-suave" style={{ marginTop: "1em", fontSize: "0.85em" }}>
+          <p className="pa-suave" style={{ marginTop: "0.7em", fontSize: "0.8em" }}>
             Modelos ilustrativos.
           </p>
         </Pagina>
@@ -374,12 +374,12 @@ export function DocumentoAurora({
 
       {/* ------------------------------------------------------------ RESPONSABILIDADES */}
       <Pagina rotulo={`${secao("responsabilidades")} / Estrutura necessária`} titulo="Responsabilidades" intro={t("responsabilidades_intro")} numero={n("responsabilidades")} total={total}>
-        <div className="pa-grade-2" style={{ gridTemplateColumns: undefined, height: "100%", alignItems: "stretch" }}>
+        <div className="pa-grade-2" style={{ height: "100%", alignItems: "stretch" }}>
           <div>
-            <p className="pa-rotulo" style={{ marginBottom: "1.4em", fontSize: "0.85em" }}>
+            <p className="pa-rotulo" style={{ marginBottom: "1.1em", fontSize: "0.85em" }}>
               Infraestrutura e acesso
             </p>
-            <ol style={{ display: "grid", gap: "1.3em", listStyle: "none", margin: 0, padding: 0 }}>
+            <ol style={{ display: "grid", gap: "1.05em", listStyle: "none", margin: 0, padding: 0 }}>
               {linhasDe(t("responsabilidades")).map((r, i) => (
                 <li key={i} style={{ display: "grid", gridTemplateColumns: "3.6em 1fr", alignItems: "center" }}>
                   <span style={{ display: "grid", placeItems: "center", width: "2.6em", height: "2.3em", border: "1px solid var(--pa-ouro)", borderRadius: "0.5em", color: "var(--pa-ouro)", fontWeight: 600 }}>
@@ -390,28 +390,28 @@ export function DocumentoAurora({
               ))}
             </ol>
             {p.taxa_quebra !== null && (
-              <p className="pa-ouro" style={{ marginTop: "2em", fontSize: "0.9em" }}>
+              <p className="pa-ouro" style={{ marginTop: "1.4em", fontSize: "0.9em" }}>
                 Taxa de quebra: {formatarMoeda(p.taxa_quebra)} por unidade extraviada.
               </p>
             )}
           </div>
-          <div className="pa-so-largo" style={{ overflow: "hidden", borderRadius: "0.9em", minHeight: 0 }}>
+          <div className="pa-so-largo pa-quadro-foto">
             {/* eslint-disable-next-line @next/next/no-img-element -- foto ilustrativa */}
-            <img src={foto("responsabilidades")} alt="" className="pa-foto" />
+            <img src={foto("responsabilidades")} alt="" />
           </div>
         </div>
       </Pagina>
 
       {/* ------------------------------------------------------------ INVESTIMENTO */}
       <Pagina rotulo={`${secao("investimento")} / Investimento`} titulo="Pacote de serviços" intro={t("investimento_intro")} numero={n("investimento")} total={total}>
-        <div className="pa-cartao pa-cartao-ouro pa-grade-2" style={{ gridTemplateColumns: undefined, height: "100%", padding: "1.6em", gap: "2.4em", alignItems: "stretch" }}>
-          <div className="pa-so-largo" style={{ overflow: "hidden", borderRadius: "0.8em", minHeight: 0, maxWidth: "100%" }}>
+        <div className="pa-cartao pa-cartao-ouro pa-grade-2" style={{ height: "100%", padding: "1.3em", gap: "2.2em", alignItems: "stretch" }}>
+          <div className="pa-so-largo pa-quadro-foto">
             {/* eslint-disable-next-line @next/next/no-img-element -- foto ilustrativa */}
-            <img src={foto("investimento")} alt="" className="pa-foto" />
+            <img src={foto("investimento")} alt="" />
           </div>
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", padding: "0.4em 0.8em 0.4em 0" }}>
             <p className="pa-rotulo">{convidadosTexto ? `Serviço para ${convidadosTexto}` : "Serviço de bar e coquetelaria"}</p>
-            {p.descricao_servico && <p style={{ fontSize: "1.2em", marginTop: "0.5em" }}>{p.descricao_servico}</p>}
+            {p.descricao_servico && <p style={{ fontSize: "1.12em", marginTop: "0.4em" }}>{p.descricao_servico}</p>}
             {itensExtras.length > 0 && (
               <ul style={{ listStyle: "none", margin: "1em 0 0", padding: 0, display: "grid", gap: "0.3em", fontSize: "0.92em" }}>
                 {itensExtras.map((i, k) => (
@@ -425,12 +425,12 @@ export function DocumentoAurora({
                 ))}
               </ul>
             )}
-            <div className="pa-regua" style={{ margin: "1.6em 0 1.2em", background: "rgba(247,242,232,0.16)" }} />
+            <div className="pa-regua" style={{ margin: "1.1em 0 0.9em", background: "rgba(247,242,232,0.16)" }} />
             <p className="pa-rotulo">Investimento total</p>
-            <p className="pa-titulo" style={{ fontSize: "3.9em", marginTop: "0.1em" }}>
+            <p className="pa-titulo" style={{ fontSize: "3.4em", marginTop: "0.05em" }}>
               {formatarMoeda(p.total)}
             </p>
-            {(pagamento || p.condicoes_pagamento) && <div className="pa-regua" style={{ margin: "1.2em 0 1em", background: "rgba(247,242,232,0.16)" }} />}
+            {(pagamento || p.condicoes_pagamento) && <div className="pa-regua" style={{ margin: "0.9em 0 0.8em", background: "rgba(247,242,232,0.16)" }} />}
             {pagamento && (
               <>
                 <p>
@@ -502,7 +502,7 @@ export function DocumentoAurora({
 
       {/* ------------------------------------------------------------ FINAL */}
       <section className="pa-pagina" aria-label="Agradecimento">
-        <div className="pa-capa" style={{ gridTemplateColumns: undefined }}>
+        <div className="pa-capa pa-capa-final">
           <div className="pa-capa-foto pa-so-largo" style={{ position: "relative" }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- foto final (qualquer origem) */}
             <img src={foto("final", p.foto_final_url)} alt="" className="pa-foto" style={{ position: "absolute", inset: 0 }} />
