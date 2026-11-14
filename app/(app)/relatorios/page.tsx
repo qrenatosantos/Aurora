@@ -252,8 +252,8 @@ export default async function PaginaRelatorios({ searchParams }: { searchParams:
                 { tipo: "data" as const, nome: "ate", rotulo: "Até", valor: ate },
               ]
             : []),
-          { nome: "funil", rotulo: "Funil", valor: funil, todos: "Todos", opcoes: funis.map((f) => ({ id: f.id, nome: f.nome })) },
-          ...(veTime ? [{ nome: "vendedor", rotulo: "Vendedor", valor: vendedor, todos: "Todos", opcoes: vendedores.map((v) => ({ id: v.id, nome: v.nome })) }] : []),
+          ...(funis.length > 1 ? [{ nome: "funil", rotulo: "Funil", valor: funil, todos: "Todos", opcoes: funis.map((f) => ({ id: f.id, nome: f.nome })) }] : []),
+          ...(veTime ? [{ nome: "vendedor", rotulo: "Responsável", valor: vendedor, todos: "Todos", opcoes: vendedores.map((v) => ({ id: v.id, nome: v.nome })) }] : []),
         ]}
       />
 

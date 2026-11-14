@@ -117,8 +117,8 @@ export default async function PaginaFunil({
   return (
     <>
       <CabecalhoPagina
-        titulo="Funil de vendas"
-        descricao={gestor ? "Todos os negócios em aberto do time." : veTime ? "Negócios do time (você edita os seus)." : "Seus negócios em aberto."}
+        titulo="Funil"
+        descricao={gestor ? "Todos os pedidos em aberto, etapa por etapa." : veTime ? "Pedidos da equipe (você edita os seus)." : "Seus pedidos em aberto."}
         acoes={
           gestor ? (
             <Link href="/configuracoes/funis" className={classesBotao("fantasma")}>
@@ -131,9 +131,9 @@ export default async function PaginaFunil({
         acao="/funil"
         limpar
         campos={[
-          { nome: "funil", rotulo: "Funil", valor: funil.id, opcoes: funisAtivos.map((f) => ({ id: f.id, nome: f.nome })) },
+          ...(funisAtivos.length > 1 ? [{ nome: "funil", rotulo: "Funil", valor: funil.id, opcoes: funisAtivos.map((f) => ({ id: f.id, nome: f.nome })) }] : []),
           ...(veTime
-            ? [{ nome: "vendedor", rotulo: "Vendedor", valor: vendedorFiltro, todos: "Todos", opcoes: opcoes.vendedores }]
+            ? [{ nome: "vendedor", rotulo: "Responsável", valor: vendedorFiltro, todos: "Todos", opcoes: opcoes.vendedores }]
             : []),
           { nome: "tag", rotulo: "Etiqueta", valor: tag, todos: "Todas", opcoes: tags.map((t) => ({ id: t, nome: t })) },
           { nome: "criado", rotulo: "Criado em", valor: sp.criado ?? "", opcoes: CRIADO },

@@ -86,9 +86,9 @@ export default async function PaginaNegocios({
             todos: "Todas",
             opcoes: Object.entries(STATUS_NEGOCIO).map(([id, s]) => ({ id, nome: s.nome })),
           },
-          { nome: "funil", rotulo: "Funil", valor: funil, todos: "Todos", opcoes: funis.map((f) => ({ id: f.id, nome: f.nome })) },
+          ...(funis.length > 1 ? [{ nome: "funil", rotulo: "Funil", valor: funil, todos: "Todos", opcoes: funis.map((f) => ({ id: f.id, nome: f.nome })) }] : []),
           ...(veTime
-            ? [{ nome: "vendedor", rotulo: "Vendedor", valor: vendedor, todos: "Todos", opcoes: vendedores.map((v) => ({ id: v.id, nome: v.nome })) }]
+            ? [{ nome: "vendedor", rotulo: "Responsável", valor: vendedor, todos: "Todos", opcoes: vendedores.map((v) => ({ id: v.id, nome: v.nome })) }]
             : []),
           {
             nome: "periodo",

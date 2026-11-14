@@ -44,7 +44,7 @@ export function ListaInsumos({ insumos, gestor }: { insumos: Insumo[]; gestor: b
       {insumos.length === 0 ? (
         <EstadoVazio titulo="Nenhum insumo cadastrado" descricao="Cadastre as bebidas, frutas e demais itens usados nos drinks." />
       ) : (
-        <Cartao className="overflow-x-auto p-0 sm:p-0">
+        <Cartao className="relative overflow-x-auto p-0 sm:p-0">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-borda text-left text-xs tracking-wider text-texto-2 uppercase">
