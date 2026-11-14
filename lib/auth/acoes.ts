@@ -83,7 +83,7 @@ export async function redefinirSenha(_anterior: EstadoAcao, formData: FormData):
   redirect("/?senha=alterada");
 }
 
-/** Descobre o endereço do site (localhost, domínio da Vercel ou domínio próprio). */
+/** Descobre o endereço do site (localhost, endereço do Cloudflare ou domínio próprio). */
 async function origemDoSite() {
   const h = await headers();
   const origem = h.get("origin");

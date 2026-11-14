@@ -26,8 +26,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon-ou-publishable`}
             <em>anon / publishable</em>.
           </li>
           <li>
-            <strong className="text-texto">Na Vercel:</strong> Settings ▸ Environment Variables ▸ adicione as duas ▸
-            depois vá em Deployments ▸ <em>Redeploy</em>.
+            <strong className="text-texto">No Cloudflare:</strong> abra o Worker ▸ Settings ▸ Build ▸ variáveis de build ▸
+            adicione as duas ▸ depois publique de novo (Deployments ▸ <em>Retry</em>).
           </li>
           <li>
             <strong className="text-texto">No seu computador:</strong> copie <code>.env.example</code> para{" "}

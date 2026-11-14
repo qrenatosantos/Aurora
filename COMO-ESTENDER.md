@@ -2,6 +2,44 @@
 
 Guia para quem (pessoa ou IA) vai construir um app em cima desta base. Siga os padrões abaixo para que todos os apps Tetra fiquem iguais por dentro.
 
+## O que a Aurora acrescentou a esta base
+
+Este projeto é a base "Gestão Comercial" adaptada para a Aurora Bartenders. Além do que este guia
+descreve, existem:
+
+```
+app/(app)/eventos/           agenda de eventos, consulta de data e bloqueios
+app/(app)/catalogo/          pacotes, drinks (receitas), insumos e calculadora de preço
+app/(app)/integracoes/       chaves do agente, avisos (webhooks), fila e registro do agente
+app/(app)/negocios/[id]/     cartao-evento.tsx e atendimento.tsx (agente/humano + conversa)
+app/(app)/propostas/[id]/    editor-proposta.tsx e acoes-proposta.tsx (fluxo de aprovação)
+app/proposta/[codigo]/       página pública da proposta (aceite do cliente)
+app/api/v1/[...rota]/        API do agente (só traduz HTTP → função api_agente do banco)
+app/api/publico/leads/       entrada dos pedidos do site (função receber_lead_site)
+components/aurora/           documento-aurora.tsx (proposta em páginas) e memoria-calculo.tsx
+lib/aurora.ts                listas e textos da Aurora (tipos de evento, situações, permissões)
+lib/proposta-textos.ts       textos padrão da proposta
+lib/api/rotas-agente.ts      ÚNICA lista de endereços da API (a documentação e o OpenAPI saem daqui)
+supabase/dados-iniciais.sql  cadastros reais da Aurora (substitui o seed de exemplo)
+supabase/testes/             testes das regras do banco (npm run test:banco)
+docs/  integracao-site/      guias e pacote para o site
+```
+
+Regras próprias deste projeto:
+
+- **Regra importante mora no banco.** Aprovação de proposta, preço, agenda, permissões do agente
+  e LGPD são funções e gatilhos do `schema.sql` (seções A1 a A15). A tela e a API só chamam.
+  Ao mudar uma regra, acrescente ou ajuste um teste em `supabase/testes/regras.test.mjs`.
+- **Funções internas ficam no esquema `privado`** (não exposto pela API do Supabase). As públicas
+  conferem quem chamou e repassam.
+- **Nova ação do agente**: função em `privado.agente_executar`, permissão em
+  `privado.escopo_da_acao`, e a rota em `lib/api/rotas-agente.ts`. Depois, atualize
+  `docs/API-DO-AGENTE.md`.
+- **Sem chave secreta.** O sistema usa só a chave pública do Supabase; não adicione `service_role`.
+- **Hospedagem**: Cloudflare Workers via OpenNext (`wrangler.jsonc`, `open-next.config.ts`).
+  O limite do plano gratuito é 3 MB compactados: confira com `npx wrangler deploy --dry-run`
+  antes de adicionar bibliotecas grandes.
+
 ## Estrutura
 
 ```
@@ -175,7 +213,7 @@ create function storage.foldername(name text) returns text[] language sql immuta
 ```
 
 ## Checklist antes de entregar um app
-- `npm run build` e `npm run lint` sem erros
+- `npm run build`, `npm run lint` e `npm run test:banco` sem erros
 - SQL validado 2× (PGlite ou Supabase local)
 - Telas testadas em 390px e 1440px, claro e escuro, sem erros no console
 - Pasta limpa: sem `node_modules`, `.next`, `.env.local`, screenshots ou scripts de teste

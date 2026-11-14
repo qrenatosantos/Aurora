@@ -1,6 +1,6 @@
 /**
- * Endereço do site (ex.: https://seu-app.vercel.app), para montar links completos
- * como o da proposta pública. Lido do próprio pedido: funciona na Vercel e no localhost
+ * Endereço do site (ex.: https://app.aurorabartendersaraxa.com.br), para montar links completos
+ * como o da proposta pública. Lido do próprio pedido: funciona no Cloudflare e no localhost
  * sem configurar nada.
  */
 import "server-only";
