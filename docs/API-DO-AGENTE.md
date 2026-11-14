@@ -256,7 +256,7 @@ Registra de 1 a 50 mensagens. Com id_externo, repetir a chamada não duplica.
 
 | Campo | Como preencher |
 |---|---|
-| `mensagens` | [{ direcao: entrada ou saida, texto, enviada_em, canal, id_externo }] |
+| `mensagens` | [{ direcao: entrada ou saida, texto, enviada_em, canal, id_externo, autor }]. `autor` só vale em `saida`: `agente` (padrão) ou `humano`, quando uma pessoa respondeu pelo painel do agente |
 
 **`POST /api/v1/negocios/:id/transferir-humano`** · permissão `atendimento.transferir`  
 Pede atendimento humano. O agente deixa de poder alterar o negócio.
@@ -407,6 +407,7 @@ segurança (por exemplo ao iniciar e a cada poucos minutos).
 | `proposta.recusada` | marcada como recusada | `numero`, `versao`, `status`, `total` |
 | `negocio.ganho` | negócio fechado | `codigo`, `titulo`, `valor` |
 | `negocio.perdido` | negócio perdido | `codigo`, `titulo`, `motivo` |
+| `contato.dados_apagados` | o gestor apagou os dados pessoais de um contato (LGPD), pela ficha ou pelo prazo de guarda | `negocios` (lista de ids limpos), `contato_anonimizado`; o id do contato vem em `contato_id` |
 | `teste.ping` | botão "Enviar teste" em Integrações | `mensagem` |
 
 Os avisos trazem poucos dados de propósito (sem telefone, sem conversa). Para o detalhe, o agente
@@ -460,7 +461,8 @@ export function avisoVerdadeiro(corpoBruto, cabecalho, segredo) {
 - O agente trata dados pessoais em nome da Aurora. Guarde do seu lado só o necessário e pelo
   tempo necessário; a fonte da verdade é este sistema.
 - Quando o gestor apaga os dados de um contato, as conversas, os pedidos e o conteúdo dos avisos
-  daquele negócio são apagados aqui. O agente deve apagar a cópia dele também.
+  daquele negócio são apagados aqui, e chega o aviso `contato.dados_apagados`. Ao recebê-lo, o
+  agente apaga a cópia dele (conversas, telefone, nome) ligada àquele `contato_id` e àqueles negócios.
 - A política de privacidade do site precisa dizer que há atendimento automatizado quando o agente
   entrar em operação, e o cliente deve poder pedir uma pessoa (use `transferir-humano`).
 - A chave do agente é uma senha: guarde-a como segredo do ambiente do agente, nunca no código,

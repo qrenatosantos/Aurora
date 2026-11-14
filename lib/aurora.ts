@@ -147,6 +147,7 @@ export const TIPOS_AVISO: { id: string; nome: string }[] = [
   { id: "proposta.recusada", nome: "Proposta recusada" },
   { id: "negocio.ganho", nome: "Negócio fechado" },
   { id: "negocio.perdido", nome: "Negócio perdido" },
+  { id: "contato.dados_apagados", nome: "Dados de um contato apagados (LGPD)" },
 ];
 export const nomeAviso = (t: string) => TIPOS_AVISO.find((x) => x.id === t)?.nome ?? (t === "teste.ping" ? "Aviso de teste" : t);
 

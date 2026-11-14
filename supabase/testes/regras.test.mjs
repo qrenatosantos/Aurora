@@ -738,6 +738,10 @@ describe("LGPD", () => {
     assert.ok(telefone);
     await gestor((tx) => tx.query("select public.anonimizar_contato($1)", [id]));
     assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Pessoa do pedido rejeitado%'")), 0);
+    // o agente fica sabendo, sem receber dado pessoal
+    const aviso = await banco((tx) => um(tx, "select * from eventos_saida where tipo = 'contato.dados_apagados' and contato_id = $1", [id]));
+    assert.ok(aviso);
+    assert.equal(JSON.stringify(aviso.dados).includes("Pessoa do pedido"), false);
     // o antigo só sai quando o prazo de guarda é aplicado de verdade
     await gestor((tx) => tx.query("select public.aplicar_retencao(true)"));
     assert.equal(await banco((tx) => valor(tx, "select count(*)::int from leads_recebidos where dados::text like '%Pedido antigo sem contato%'")), 1);

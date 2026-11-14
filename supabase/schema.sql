@@ -5885,6 +5885,9 @@ begin
            observacoes = null, tags = '{}'
      where id = p_id;
   end if;
+  -- avisa o agente (e quem mais estiver ligado) para apagar as cópias dele; o aviso não leva dado pessoal
+  perform privado.emitir_evento('contato.dados_apagados', null, null, p_id,
+    jsonb_build_object('negocios', to_jsonb(v_negocios), 'contato_anonimizado', v_mantidos = 0));
   return jsonb_build_object('negocios_limpos', coalesce(array_length(v_negocios, 1), 0), 'negocios_mantidos', v_mantidos,
                             'contato_anonimizado', v_mantidos = 0);
 end;
