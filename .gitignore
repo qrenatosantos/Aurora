@@ -33,6 +33,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+# endereço e chave PÚBLICA do Supabase da Aurora (não são segredo: vão para o navegador)
+!.env.production
 
 # vercel
 .vercel
