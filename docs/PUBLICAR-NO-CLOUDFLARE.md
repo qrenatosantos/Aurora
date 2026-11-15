@@ -61,22 +61,21 @@ atualização do código, ele publica de novo sozinho.
 ### 2.1 Criar o Worker a partir do repositório
 1. No painel do Cloudflare ▸ **Workers & Pages** ▸ **Create** ▸ **Import a repository**.
 2. Autorize o Cloudflare a ver o repositório do sistema no GitHub e selecione-o.
-3. Nome do projeto: `aurora-sistema`.
-4. Preencha os comandos:
-   - **Build command:** `npx opennextjs-cloudflare build`
-   - **Deploy command:** `npx opennextjs-cloudflare deploy`
-5. **Antes de publicar**, abra as **variáveis de build** (Build variables) e cadastre as duas:
+3. Nome do projeto: **`aurora`**. Precisa ser igual ao `name` do arquivo `wrangler.jsonc`;
+   com outro nome, a publicação falha.
+4. Deixe os comandos **padrão** que o Cloudflare sugere:
+   - **Build command:** `npm run build`
+   - **Deploy command:** `npx wrangler deploy`
+5. Não precisa cadastrar variáveis: o endereço e a chave **pública** do Supabase da Aurora estão
+   no arquivo `.env.production` do projeto (não são segredo: vão para o navegador). Se um dia o
+   projeto do Supabase mudar, troque os dois valores nesse arquivo.
+6. **Save and Deploy**. A primeira publicação leva de 3 a 5 minutos. Depois disso, **cada envio
+   ao GitHub publica sozinho**.
 
-   | Nome | Valor |
-   |---|---|
-   | `NEXT_PUBLIC_SUPABASE_URL` | o Project URL do passo 1.5 |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | a chave pública do passo 1.5 |
-
-   Elas precisam estar nas variáveis **de build**: o sistema as "embute" na hora de montar.
-6. **Save and Deploy**. A primeira publicação leva de 3 a 5 minutos.
+O sistema da Aurora está em `https://aurora.q-renatosantos.workers.dev`.
 
 Os nomes dos botões no painel do Cloudflare mudam de vez em quando. Se algo estiver diferente,
-procure por "Workers Builds" ou "Connect to Git"; os comandos e as variáveis são os mesmos.
+procure por "Workers Builds" ou "Connect to Git"; os comandos são os mesmos.
 
 ### 2.2 Endereço próprio
 1. No Worker ▸ **Settings ▸ Domains & Routes ▸ Add ▸ Custom domain**.
@@ -92,8 +91,8 @@ Sem isso, o link de "Esqueci minha senha" não volta para o sistema.
 
 ### 2.4 Primeiro acesso
 1. Abra `https://app.aurorabartendersaraxa.com.br` e entre com o login do passo 1.3.
-2. Se aparecer a tela "Configure as variáveis de ambiente", as variáveis do passo 2.1 não foram
-   salvas como variáveis de build: corrija e publique de novo (**Deployments ▸ Retry**).
+2. Se aparecer a tela "Configure as variáveis de ambiente", confira o arquivo `.env.production`
+   do projeto e publique de novo (**Deployments ▸ Retry**).
 
 ---
 

@@ -1,8 +1,10 @@
 {
 	// Configuração do Cloudflare Workers (hospedagem do sistema).
 	// Passo a passo em docs/PUBLICAR-NO-CLOUDFLARE.md
+	// O nome precisa ser igual ao do Worker no painel do Cloudflare ("aurora").
+	// Publicação pelo GitHub (Workers Builds) com os comandos padrão: npm run build / npx wrangler deploy.
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "aurora-sistema",
+	"name": "aurora",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-10-01",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],

@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "opennextjs-cloudflare build",
+    "build:next": "next build",
     "start": "next start",
     "lint": "eslint",
     "test:banco": "node --test supabase/testes/regras.test.mjs",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "deploy": "opennextjs-cloudflare build && wrangler deploy"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
