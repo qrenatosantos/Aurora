@@ -238,6 +238,28 @@ describe("agenda de eventos", () => {
     });
   });
 
+  test("data definida depois do fechamento (ou depois de enviar a proposta) já ocupa a agenda", async () => {
+    const outroDia = amanha(200);
+    await banco(async (tx) => {
+      const funil = await valor(tx, "select id from funis order by ordem limit 1");
+      const etapa = await valor(tx, "select id from etapas where funil_id = $1 order by ordem limit 1", [funil]);
+      const dono = await valor(tx, "select id from vendedores where papel = 'gestor' and tipo = 'humano' limit 1");
+      // fechado com a data "a definir"
+      const ganho = await valor(tx, "insert into negocios (titulo, funil_id, etapa_id, vendedor_id, valor) values ('Fechado sem data', $1, $2, $3, 1000) returning id", [funil, etapa, dono]);
+      await tx.query("insert into eventos (negocio_id) values ($1) on conflict (negocio_id) do nothing", [ganho]);
+      await tx.query("update negocios set status = 'ganho' where id = $1", [ganho]);
+      assert.equal(await valor(tx, "select situacao_data from eventos where negocio_id = $1", [ganho]), "consulta");
+      await tx.query("update eventos set data = $2 where negocio_id = $1", [ganho, outroDia]);
+      assert.equal(await valor(tx, "select situacao_data from eventos where negocio_id = $1", [ganho]), "confirmada");
+      // em aberto, sem proposta enviada: continua em consulta
+      const aberto = await valor(tx, "insert into negocios (titulo, funil_id, etapa_id, vendedor_id) values ('Só consulta', $1, $2, $3) returning id", [funil, etapa, dono]);
+      await tx.query("insert into eventos (negocio_id, data) values ($1, $2) on conflict (negocio_id) do update set data = excluded.data", [aberto, outroDia]);
+      assert.equal(await valor(tx, "select situacao_data from eventos where negocio_id = $1", [aberto]), "consulta");
+      const disp = await valor(tx, "select privado.disponibilidade($1::date, null, null, null)", [outroDia]).catch(() => null);
+      if (disp) assert.equal(Number(disp.confirmados ?? disp.reservados_confirmados ?? 1) >= 1, true);
+    });
+  });
+
   test("reserva vencida deixa de ocupar a data", async () => {
     await banco((tx) => tx.query("update eventos set reservada_ate = public.hoje_br() - 1 where data = $1 and situacao_data = 'reservada'", [dia]));
     const d = await gestor((tx) => valor(tx, "select public.disponibilidade_data($1::date, '20:00')", [dia]));

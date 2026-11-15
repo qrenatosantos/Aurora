@@ -2998,14 +2998,45 @@ drop trigger if exists trg_eventos_updated_at on public.eventos;
 create trigger trg_eventos_updated_at before update on public.eventos
   for each row execute function public.set_updated_at();
 
+-- Situação que uma data recém-definida deve ter, pelo estado do negócio: fechado = confirmada;
+-- com proposta enviada e ainda válida = reservada (até a validade). Fora isso, nada muda.
+create or replace function privado.situacao_da_data(p_negocio uuid)
+returns table (situacao text, reservada_ate date)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case when n.status = 'ganho' then 'confirmada'
+              when n.status = 'aberto' and pr.ate is not null then 'reservada' end,
+         case when n.status = 'aberto' then pr.ate end
+    from public.negocios n
+    left join lateral (select max(p.validade) as ate from public.propostas p
+                        where p.negocio_id = n.id and p.status = 'enviada' and p.validade >= public.hoje_br()) pr on true
+   where n.id = p_negocio;
+$$;
+revoke all on function privado.situacao_da_data(uuid) from public, anon, authenticated;
+
 create or replace function public.evento_antes()
 returns trigger
 language plpgsql
+security definer -- consulta negócio e propostas mesmo quando quem grava não as enxerga
 set search_path = public
 as $$
+declare
+  v_sit text;
+  v_ate date;
 begin
   if new.data is null then
     new.situacao_data := 'consulta';
+  elsif new.situacao_data in ('consulta', 'liberada')
+        and (tg_op = 'INSERT' or old.data is null or old.data is distinct from new.data) then
+    -- data definida (ou trocada) num negócio já fechado ou com proposta enviada: ocupa a agenda
+    select s.situacao, s.reservada_ate into v_sit, v_ate from privado.situacao_da_data(new.negocio_id) s;
+    if v_sit is not null then
+      new.situacao_data := v_sit;
+      new.reservada_ate := v_ate;
+    end if;
   end if;
   if new.situacao_data <> 'reservada' then
     new.reservada_ate := null;
