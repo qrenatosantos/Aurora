@@ -51,12 +51,15 @@ language sql
 immutable
 set search_path = ''
 as $$
+  -- Celular antigo sem o 9 (DDD + 8 dígitos começando por 6, 7, 8 ou 9) vira DDD + 9 + 8 dígitos:
+  -- "34 8893-5223" e "34 98893-5223" são o mesmo número. Fixo (começa por 2 a 5) fica como está.
   select case
-    when p is null then null
-    when char_length(regexp_replace(p, '\D', '', 'g')) in (12, 13) and regexp_replace(p, '\D', '', 'g') like '55%'
-      then substr(regexp_replace(p, '\D', '', 'g'), 3)
-    else nullif(regexp_replace(p, '\D', '', 'g'), '')
-  end;
+    when d is null then null
+    when char_length(d) = 10 and substr(d, 3, 1) in ('6', '7', '8', '9') then substr(d, 1, 2) || '9' || substr(d, 3)
+    else d
+  end
+  from (select case when char_length(x) in (12, 13) and x like '55%' then substr(x, 3) else nullif(x, '') end as d
+          from (select regexp_replace(coalesce(p, ''), '\D', '', 'g') as x) a) b;
 $$;
 
 -- =====================================================================
@@ -2331,6 +2334,56 @@ alter table public.configuracoes drop constraint if exists configuracoes_propost
 alter table public.configuracoes add constraint configuracoes_proposta_json_ck
   check (jsonb_typeof(proposta_textos) = 'object' and jsonb_typeof(proposta_fotos) = 'object');
 
+-- Telefones: tel_norm() passou a tratar celular com e sem o 9 como o mesmo número.
+-- Bancos criados antes disso precisam recalcular o índice (rápido; pode rodar sempre).
+reindex index public.contatos_tel_idx;
+
+-- Contato que pediu para não receber mensagens, e consentimento para retomadas (LGPD e regras
+-- da Meta). As datas são preenchidas pelo banco; o "não contatar" desliga as retomadas.
+alter table public.contatos add column if not exists nao_contatar        boolean not null default false;
+alter table public.contatos add column if not exists nao_contatar_em     timestamptz;
+alter table public.contatos add column if not exists nao_contatar_motivo text;
+alter table public.contatos add column if not exists aceita_retomadas    boolean not null default false;
+alter table public.contatos add column if not exists aceita_retomadas_em timestamptz;
+alter table public.contatos drop constraint if exists contatos_nao_contatar_motivo_ck;
+alter table public.contatos add constraint contatos_nao_contatar_motivo_ck
+  check (nao_contatar_motivo is null or char_length(nao_contatar_motivo) <= 200);
+
+create or replace function public.contato_preferencias()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if tg_op = 'UPDATE' then
+    -- as datas não são editáveis: o banco registra quando cada escolha foi feita
+    new.nao_contatar_em := old.nao_contatar_em;
+    new.aceita_retomadas_em := old.aceita_retomadas_em;
+  else
+    new.nao_contatar_em := null;
+    new.aceita_retomadas_em := null;
+  end if;
+  if new.nao_contatar then
+    new.aceita_retomadas := false;
+    if tg_op = 'INSERT' or not old.nao_contatar then
+      new.nao_contatar_em := now();
+    end if;
+    new.nao_contatar_motivo := nullif(left(trim(new.nao_contatar_motivo), 200), '');
+  else
+    new.nao_contatar_em := null;
+    new.nao_contatar_motivo := null;
+  end if;
+  if (tg_op = 'INSERT' and new.aceita_retomadas) or (tg_op = 'UPDATE' and new.aceita_retomadas is distinct from old.aceita_retomadas) then
+    new.aceita_retomadas_em := now();
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.contato_preferencias() from public, anon, authenticated;
+drop trigger if exists trg_contatos_preferencias on public.contatos;
+create trigger trg_contatos_preferencias before insert or update on public.contatos
+  for each row execute function public.contato_preferencias();
+
 -- =====================================================================
 -- A2. O AGENTE COMO "VENDEDOR" ESPECIAL (sem login)
 -- Assim cada ação dele aparece na auditoria e no histórico com o nome "Agente SDR".
@@ -4554,8 +4607,9 @@ language sql
 immutable
 set search_path = public
 as $$
+  -- guarda no formato de comparação (sem o 55, celular com o 9)
   select case when d ~ '^[0-9]{10,13}$' then d end
-    from (select regexp_replace(coalesce(p, ''), '\D', '', 'g') as d) x;
+    from (select public.tel_norm(p) as d) x;
 $$;
 
 create or replace function privado.tipo_evento(p text)
@@ -4947,7 +5001,7 @@ immutable
 as $$
   select array['contatos.ler', 'contatos.gravar', 'negocios.ler', 'negocios.gravar', 'agenda.ler', 'catalogo.ler',
                'precos.calcular', 'propostas.ler', 'propostas.gravar', 'propostas.enviar', 'mensagens.ler',
-               'mensagens.gravar', 'atendimento.transferir', 'eventos.ler'];
+               'mensagens.gravar', 'atendimento.transferir', 'eventos.ler', 'atendimento.devolver'];
 $$;
 
 -- Qual permissão cada ação exige ('' = qualquer chave válida; nulo = ação desconhecida).
@@ -4985,6 +5039,7 @@ as $$
     when 'mensagens.registrar' then 'mensagens.gravar'
     when 'atendimento.pedir_humano' then 'atendimento.transferir'
     when 'eventos.listar' then 'eventos.ler'
+    when 'atendimento.encaminhar_agente' then 'atendimento.devolver'
   end;
 $$;
 
@@ -4997,7 +5052,8 @@ set search_path = public, extensions
 as $$
 declare
   v_chave   text;
-  v_escopos text[] := coalesce(p_escopos, privado.escopos_validos());
+  -- padrão: tudo menos "devolver ao agente", que é só da chave do painel (a IA não pega conversas sozinha)
+  v_escopos text[] := coalesce(p_escopos, array_remove(privado.escopos_validos(), 'atendimento.devolver'));
   v_id      uuid;
 begin
   if not public.sou_gestor() then
@@ -5063,6 +5119,20 @@ begin
 end;
 $$;
 
+-- Endereço completo de um arquivo do sistema (ex.: foto de drink em /aurora/drinks/...).
+create or replace function privado.url_publica(p text)
+returns text
+language sql
+stable
+set search_path = public
+as $$
+  select case
+    when p is null or trim(p) = '' then null
+    when p ~ '^https?://' then p
+    when nullif(current_setting('app.base_url', true), '') is not null then current_setting('app.base_url', true) || p
+  end;
+$$;
+
 create or replace function privado.json_contato(c public.contatos)
 returns jsonb
 language sql
@@ -5072,6 +5142,8 @@ as $$
   select case when c.id is null then null else jsonb_build_object(
     'id', c.id, 'nome', c.nome, 'telefone', c.telefone, 'email', c.email, 'cidade', c.cidade,
     'observacoes', c.observacoes, 'tags', to_jsonb(c.tags),
+    'nao_contatar', c.nao_contatar, 'nao_contatar_em', c.nao_contatar_em, 'nao_contatar_motivo', c.nao_contatar_motivo,
+    'aceita_retomadas', c.aceita_retomadas, 'aceita_retomadas_em', c.aceita_retomadas_em,
     'origem', (select o.nome from public.origens o where o.id = c.origem_id),
     'criado_em', c.created_at, 'atualizado_em', c.updated_at) end;
 $$;
@@ -5274,7 +5346,10 @@ begin
            telefone = case when d ? 'telefone' then v_tel else telefone end,
            email = case when d ? 'email' then nullif(lower(trim(d ->> 'email')), '') else email end,
            cidade = case when d ? 'cidade' then nullif(left(trim(d ->> 'cidade'), 80), '') else cidade end,
-           observacoes = case when d ? 'observacoes' then nullif(left(trim(d ->> 'observacoes'), 2000), '') else observacoes end
+           observacoes = case when d ? 'observacoes' then nullif(left(trim(d ->> 'observacoes'), 2000), '') else observacoes end,
+           nao_contatar = case when jsonb_typeof(d -> 'nao_contatar') = 'boolean' then (d ->> 'nao_contatar')::boolean else nao_contatar end,
+           nao_contatar_motivo = case when d ? 'nao_contatar_motivo' then d ->> 'nao_contatar_motivo' else nao_contatar_motivo end,
+           aceita_retomadas = case when jsonb_typeof(d -> 'aceita_retomadas') = 'boolean' then (d ->> 'aceita_retomadas')::boolean else aceita_retomadas end
      where id = v_c.id
     returning * into v_c;
     return privado.resposta(privado.json_contato(v_c), 'Atualizou o contato ' || v_c.nome || '.', null, v_c.id);
@@ -5384,7 +5459,8 @@ begin
     select coalesce(jsonb_agg(jsonb_build_object(
              'id', p.id, 'nome', p.nome, 'slogan', p.slogan, 'descricao', p.descricao,
              'drinks', coalesce((select jsonb_agg(jsonb_build_object('id', dr.id, 'nome', dr.nome, 'descricao', dr.descricao,
-                                                                     'alcoolico', dr.alcoolico, 'categoria', dr.categoria) order by pd.ordem)
+                                                                     'alcoolico', dr.alcoolico, 'categoria', dr.categoria,
+                                                                     'foto_url', privado.url_publica(dr.foto_url)) order by pd.ordem)
                                    from public.pacote_drinks pd join public.drinks dr on dr.id = pd.drink_id and dr.ativo
                                   where pd.pacote_id = p.id), '[]'::jsonb)) order by p.ordem, p.nome), '[]'::jsonb)
       into v_json from public.pacotes p where p.ativo;
@@ -5392,7 +5468,7 @@ begin
 
   elsif p_acao = 'catalogo.drinks' then
     select coalesce(jsonb_agg(jsonb_build_object('id', dr.id, 'nome', dr.nome, 'descricao', dr.descricao, 'alcoolico', dr.alcoolico,
-                                                 'categoria', dr.categoria, 'copo', dr.copo,
+                                                 'categoria', dr.categoria, 'copo', dr.copo, 'foto_url', privado.url_publica(dr.foto_url),
                                                  'em_pacote', exists (select 1 from public.pacote_drinks pd where pd.drink_id = dr.id))
                               order by dr.ordem, dr.nome), '[]'::jsonb)
       into v_json from public.drinks dr where dr.ativo;
@@ -5597,6 +5673,24 @@ begin
         'transferido', privado.transferir(v_n.id, 'humano', d ->> 'motivo', v_agente, 'agente'), 'atendimento', 'humano'),
       'Pediu atendimento humano em ' || v_n.codigo || ': ' || left(trim(d ->> 'motivo'), 120), v_n.id);
 
+  -- Painel do agente: uma PESSOA devolve a conversa ao agente (permissão atendimento.devolver,
+  -- que fica só na chave do painel). Mesmo efeito do botão "Passar para o agente" do CRM.
+  elsif p_acao = 'atendimento.encaminhar_agente' then
+    v_n := privado.negocio_do_agente(privado.id_de(d, 'negocio_id'), false);
+    if char_length(coalesce(trim(d ->> 'autor'), '')) < 2 then
+      raise exception 'Informe em "autor" o nome da pessoa que pediu a devolução.' using errcode = 'AU400';
+    end if;
+    if v_n.status <> 'aberto' then
+      raise exception 'Este negócio já foi encerrado (%).', v_n.status using errcode = 'AU409';
+    end if;
+    perform set_config('app.autor_painel', left(trim(d ->> 'autor'), 80), true);
+    return privado.resposta(jsonb_build_object(
+        'transferido', privado.transferir(v_n.id, 'agente',
+                         concat_ws(': ', 'Pelo painel do agente, por ' || left(trim(d ->> 'autor'), 80), nullif(left(trim(d ->> 'motivo'), 400), '')),
+                         null, 'humano'),
+        'atendimento', 'agente'),
+      'Devolveu ' || v_n.codigo || ' ao agente, a pedido de ' || left(trim(d ->> 'autor'), 80) || '.', v_n.id);
+
   -- ================= AVISOS (consulta) =================
   elsif p_acao = 'eventos.listar' then
     v_big := coalesce(nullif(d ->> 'depois', '')::bigint, 0);
@@ -5748,7 +5842,8 @@ begin
     select v.nome into v_autor from public.vendedores v where v.user_id = auth.uid() limit 1;
     v_autor := coalesce(v_autor, 'Usuário sem cadastro');
   else
-    v_autor := case v_tipo when 'agente' then 'Agente SDR' when 'cliente' then 'Cliente (link da proposta)'
+    v_autor := case v_tipo when 'agente' then coalesce('Painel do agente (' || nullif(current_setting('app.autor_painel', true), '') || ')', 'Agente SDR')
+                           when 'cliente' then 'Cliente (link da proposta)'
                            when 'site' then 'Site (formulário de orçamento)' else 'Sistema' end;
   end if;
 
@@ -5872,7 +5967,7 @@ begin
   if v_tel is not null then
     update public.leads_recebidos l set dados = '{}'::jsonb
      where l.contato_id is null and l.dados <> '{}'::jsonb
-       and privado.telefone(coalesce(l.dados ->> 'whatsapp', l.dados ->> 'telefone')) = v_tel;
+       and public.tel_norm(coalesce(l.dados ->> 'whatsapp', l.dados ->> 'telefone')) = public.tel_norm(v_tel);
   end if;
   update public.agente_log set pedido = null, resumo = null where negocio_id = any(v_negocios) or registro_id = p_id;
   update public.eventos_saida set dados = '{}'::jsonb where negocio_id = any(v_negocios);
@@ -5882,7 +5977,7 @@ begin
   if v_mantidos = 0 then
     update public.contatos
        set nome = 'Contato removido', telefone = null, email = null, cpf = null, cidade = null, cargo = null,
-           observacoes = null, tags = '{}'
+           observacoes = null, tags = '{}', nao_contatar_motivo = null
      where id = p_id;
   end if;
   -- avisa o agente (e quem mais estiver ligado) para apagar as cópias dele; o aviso não leva dado pessoal

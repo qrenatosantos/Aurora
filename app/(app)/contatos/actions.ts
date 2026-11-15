@@ -234,3 +234,31 @@ export async function apagarDadosContato(id: string, incluirFechados: boolean): 
       : `Conversas e dados dos negócios em aberto ou perdidos foram apagados. ${r.negocios_mantidos} negócio(s) fechado(s) foram mantidos como registro do contrato.`,
   );
 }
+
+/**
+ * Preferências de mensagens do contato: "não contatar" (pediu para parar) e consentimento para
+ * retomadas. As datas são gravadas pelo banco. Vale para a equipe e para o agente.
+ */
+export async function salvarPreferenciasContato(
+  id: string,
+  preferencias: { nao_contatar: boolean; nao_contatar_motivo?: string | null; aceita_retomadas: boolean },
+): Promise<EstadoAcao> {
+  if (!ehUuid(id)) return falha("Contato inválido.");
+  const r = z
+    .object({ nao_contatar: z.boolean(), nao_contatar_motivo: z.string().trim().max(200, "Até 200 caracteres.").nullish(), aceita_retomadas: z.boolean() })
+    .safeParse(preferencias);
+  if (!r.success) return falha(r.error.issues[0]?.message ?? "Dados inválidos.");
+  const p = await exigirPerfil();
+  if ("erro" in p) return falha(p.erro);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contatos")
+    .update({ ...r.data, nao_contatar_motivo: r.data.nao_contatar ? r.data.nao_contatar_motivo || null : null })
+    .eq("id", id)
+    .select("id");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data?.length) return falha("Contato não encontrado ou sem permissão para editar.");
+  revalidatePath(`/contatos/${id}`);
+  revalidatePath("/negocios", "layout");
+  return sucesso(r.data.nao_contatar ? "Anotado: esta pessoa não recebe mais mensagens." : "Preferências salvas.");
+}

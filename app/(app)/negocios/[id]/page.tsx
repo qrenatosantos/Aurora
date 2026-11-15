@@ -49,7 +49,7 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
       supabase.from("propostas").select("*").eq("negocio_id", id).order("created_at", { ascending: false }),
       supabase.from("comissoes").select("*").eq("negocio_id", id).maybeSingle(),
       negocio.contato_id
-        ? supabase.from("contatos").select("id, nome, telefone, email, cargo").eq("id", negocio.contato_id).maybeSingle()
+        ? supabase.from("contatos").select("id, nome, telefone, email, cargo, nao_contatar").eq("id", negocio.contato_id).maybeSingle()
         : Promise.resolve({ data: null }),
       negocio.empresa_id
         ? supabase.from("empresas").select("id, nome, cidade, uf").eq("id", negocio.empresa_id).maybeSingle()
@@ -126,6 +126,11 @@ export default async function PaginaNegocio({ params }: { params: Promise<{ id: 
               <Selo cor={at.cor}>
                 {negocio.atendimento === "agente" ? <Bot className="mr-1 size-3.5" aria-hidden /> : <UserRound className="mr-1 size-3.5" aria-hidden />}
                 Atendimento: {at.nome}
+              </Selo>
+            )}
+            {contato?.nao_contatar && (
+              <Selo cor="perigo" title="A pessoa pediu para não receber mensagens. Veja a ficha do contato.">
+                Não contatar
               </Selo>
             )}
             {negocio.codigo && <span className="num text-xs font-semibold text-texto-2">Pedido {negocio.codigo}</span>}

@@ -54,11 +54,22 @@ a hora, o endereço de internet (IP) e o navegador usados, como comprovação do
 
 ## Atendimento automatizado
 
-**[CONFIRMAR: publicar este item somente quando o atendente automático entrar em operação.]**
-Parte do primeiro atendimento pode ser feita por um assistente automático, que organiza as
+**[CONFIRMAR: publicar este item somente antes de o assistente automático atender o primeiro
+cliente real (piloto). Não publique antes disso.]**
+
+Parte do atendimento pelo WhatsApp pode ser feita por um assistente automático. Ele organiza as
 informações da festa e encaminha a proposta. Ele só informa preços, datas e condições que a
 equipe da Aurora cadastrou e aprovou, e nenhuma proposta é enviada sem a aprovação de uma pessoa.
 Você pode pedir para falar com uma pessoa a qualquer momento.
+
+- As mensagens do WhatsApp passam pela **Meta** (WhatsApp Business Platform).
+- O texto das conversas é processado pela **OpenAI**, nos Estados Unidos, que atua como operadora
+  em nome da Aurora: ela não usa esses dados para treinar os modelos e guarda registros de
+  segurança por até 30 dias. Por isso há **transferência internacional de dados** (LGPD, art. 33).
+- Você pode pedir para **não receber mais mensagens** a qualquer momento. A partir daí, não
+  enviamos mensagens de retomada (por exemplo, lembretes sobre a proposta).
+- As conversas com o assistente seguem o **mesmo prazo de guarda** dos pedidos: até 12 meses
+  depois do último contato para quem não fechou, e são apagadas quando você pede.
 
 ## Cookies e serviços de terceiros
 

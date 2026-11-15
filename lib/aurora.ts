@@ -167,4 +167,7 @@ export const ESCOPOS_API: { id: string; nome: string }[] = [
   { id: "mensagens.gravar", nome: "Registrar mensagens da conversa" },
   { id: "atendimento.transferir", nome: "Pedir atendimento humano" },
   { id: "eventos.ler", nome: "Consultar os avisos pendentes" },
+  { id: "atendimento.devolver", nome: "Devolver conversas ao agente (só para a chave do PAINEL, nunca para a da IA)" },
 ];
+/** Permissões que NÃO vêm marcadas ao criar uma chave. */
+export const ESCOPOS_FORA_DO_PADRAO = ["atendimento.devolver"];

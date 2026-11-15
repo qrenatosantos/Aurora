@@ -772,3 +772,102 @@ describe("LGPD", () => {
     await assert.rejects(vendedora((tx) => tx.query("select public.aplicar_retencao(false)")), /Só o gestor/);
   });
 });
+
+describe("pedidos do agente (C1 a C4)", () => {
+  let ia, painel;
+
+  test("C2: celular com e sem o 9 é o mesmo número; fixo continua como está", async () => {
+    const t = await banco(async (tx) => ({
+      com9: await valor(tx, "select public.tel_norm('(34) 98893-5223')"),
+      sem9: await valor(tx, "select public.tel_norm('+55 34 8893-5223')"),
+      sem9sem55: await valor(tx, "select public.tel_norm('3488935223')"),
+      fixo: await valor(tx, "select public.tel_norm('(34) 3661-1234')"),
+    }));
+    assert.equal(t.com9, "34988935223");
+    assert.equal(t.sem9, "34988935223");
+    assert.equal(t.sem9sem55, "34988935223");
+    assert.equal(t.fixo, "3436611234");
+
+    ia = (await gestor((tx) => valor(tx, "select public.criar_chave_api('IA do agente')"))).chave;
+    const c = await api(ia, "contatos.criar", { nome: "Helena Prado", telefone: "5534977112233" });
+    assert.equal(c.status, 201);
+    assert.equal(c.dados.telefone, "34977112233"); // guardado já no formato atual
+    // o WhatsApp entrega o número antigo, sem o 9: acha o mesmo contato, não cria outro
+    const c2 = await api(ia, "contatos.criar", { nome: "Helena", telefone: "553477112233" });
+    assert.equal(c2.status, 200);
+    assert.equal(c2.dados.id, c.dados.id);
+    const busca = await api(ia, "contatos.buscar", { telefone: "3477112233" });
+    assert.equal(busca.dados.contatos.length, 1);
+    // e o cadastro manual também reconhece o duplicado
+    const dup = await gestor((tx) => valor(tx, "select count(*)::int from public.contatos_duplicados(null, '(34) 7711-2233', null)"));
+    assert.equal(dup, 1);
+  });
+
+  test("C1: só a chave do painel devolve ao agente; a da IA não consegue", async () => {
+    // a permissão nova não vem por padrão
+    const escopos = await banco((tx) => valor(tx, "select escopos from chaves_api where nome = 'IA do agente'"));
+    assert.equal(escopos.includes("atendimento.devolver"), false);
+    painel = (await gestor((tx) => valor(tx, "select public.criar_chave_api('Painel do agente', array['negocios.ler','atendimento.devolver'])"))).chave;
+
+    const n = await api(ia, "negocios.criar", { contato: { nome: "Otávio Reis", telefone: "34966554433" }, evento: { tipo: "aniversario" } });
+    assert.equal(n.status, 201);
+    const id = n.dados.id;
+    assert.equal((await api(ia, "atendimento.pedir_humano", { negocio_id: id, motivo: "Cliente pediu uma pessoa" })).status, 200);
+
+    // a IA não tem a permissão
+    assert.equal((await api(ia, "atendimento.encaminhar_agente", { negocio_id: id, autor: "André" })).status, 403);
+    // sem dizer quem pediu, não vai
+    assert.equal((await api(painel, "atendimento.encaminhar_agente", { negocio_id: id })).status, 400);
+
+    const r = await api(painel, "atendimento.encaminhar_agente", { negocio_id: id, autor: "André Procácio", motivo: "Pode seguir" });
+    assert.equal(r.status, 200);
+    assert.equal(r.dados.transferido, true);
+    await banco(async (tx) => {
+      assert.equal(await valor(tx, "select atendimento from negocios where id = $1", [id]), "agente");
+      const t = await um(tx, "select * from transferencias where negocio_id = $1 order by created_at desc limit 1", [id]);
+      assert.equal(t.para, "agente");
+      assert.equal(t.autor_tipo, "humano");
+      assert.match(t.motivo, /André Procácio/);
+      assert.equal(await valor(tx, "select count(*)::int from eventos_saida where tipo = 'atendimento.encaminhado_agente' and negocio_id = $1", [id]), 1);
+      assert.match(await valor(tx, "select resumo from agente_log where acao = 'atendimento.encaminhar_agente' and ok order by id desc limit 1"), /André Procácio/);
+      assert.equal(await valor(tx, "select autor from auditoria where tabela = 'negocios' and registro_id = $1 order by created_at desc limit 1", [id]),
+        "Painel do agente (André Procácio)");
+    });
+    // de novo: já está com o agente, não faz nada
+    const r2 = await api(painel, "atendimento.encaminhar_agente", { negocio_id: id, autor: "André Procácio" });
+    assert.equal(r2.dados.transferido, false);
+    // negócio encerrado não volta
+    await banco((tx) => tx.query("update negocios set status = 'perdido', motivo_perda_id = (select id from motivos_perda limit 1) where id = $1", [id]));
+    assert.equal((await api(painel, "atendimento.encaminhar_agente", { negocio_id: id, autor: "André" })).status, 409);
+  });
+
+  test("C3: não contatar e consentimento de retomadas, com datas do banco", async () => {
+    const c = await api(ia, "contatos.criar", { nome: "Lívia Santos", telefone: "34955443322" });
+    const id = c.dados.id;
+    let r = await api(ia, "contatos.atualizar", { id, aceita_retomadas: true });
+    assert.equal(r.dados.aceita_retomadas, true);
+    assert.ok(r.dados.aceita_retomadas_em);
+    r = await api(ia, "contatos.atualizar", { id, nao_contatar: true, nao_contatar_motivo: "Pediu para parar" });
+    assert.equal(r.dados.nao_contatar, true);
+    assert.ok(r.dados.nao_contatar_em);
+    assert.equal(r.dados.aceita_retomadas, false); // quem pediu para parar não recebe retomadas
+    // as datas não são editáveis por fora
+    await banco((tx) => tx.query("update contatos set nao_contatar_em = '2000-01-01' where id = $1", [id]));
+    assert.notEqual(new Date(await banco((tx) => valor(tx, "select nao_contatar_em from contatos where id = $1", [id]))).getFullYear(), 2000);
+    // aparece também no negócio
+    const n = await api(ia, "negocios.criar", { contato_id: id, evento: { tipo: "casamento" } });
+    assert.equal(n.dados.contato.nao_contatar, true);
+    // desfazer limpa data e motivo
+    r = await api(ia, "contatos.atualizar", { id, nao_contatar: false });
+    assert.equal(r.dados.nao_contatar_em, null);
+    assert.equal(r.dados.nao_contatar_motivo, null);
+  });
+
+  test("C4: foto dos drinks com endereço completo", async () => {
+    const d = await api(ia, "catalogo.drinks");
+    const gin = d.dados.drinks.find((x) => x.nome === "Gin tônica");
+    assert.equal(gin.foto_url, "https://app.exemplo.com.br/aurora/drinks/gin-tonica.webp");
+    const p = await api(ia, "catalogo.pacotes");
+    assert.ok(p.dados.pacotes.some((pc) => pc.drinks.some((x) => x.foto_url && x.foto_url.startsWith("https://app.exemplo.com.br/"))));
+  });
+});

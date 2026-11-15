@@ -11,7 +11,7 @@ import { useConfirmar } from "@/components/ui/confirmar";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import type { EstadoAcao } from "@/lib/acoes";
-import { ESCOPOS_API, TIPOS_AVISO } from "@/lib/aurora";
+import { ESCOPOS_API, ESCOPOS_FORA_DO_PADRAO, TIPOS_AVISO } from "@/lib/aurora";
 import { formatarDataHora } from "@/lib/formatar";
 import type { ChaveApi, Webhook } from "@/lib/tipos";
 import { useAcao } from "@/lib/use-acao";
@@ -142,13 +142,13 @@ export function Chaves({ chaves }: { chaves: ChaveLista[] }) {
               <div className="grid gap-1 rounded-xl border border-borda p-2 sm:grid-cols-2">
                 {ESCOPOS_API.map((s) => (
                   <label key={s.id} className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm hover:bg-superficie-2">
-                    <input type="checkbox" name={`escopo_${s.id}`} defaultChecked className="size-5 shrink-0 accent-[var(--marca)]" />
+                    <input type="checkbox" name={`escopo_${s.id}`} defaultChecked={!ESCOPOS_FORA_DO_PADRAO.includes(s.id)} className="size-5 shrink-0 accent-[var(--marca)]" />
                     {s.nome}
                   </label>
                 ))}
               </div>
               <p className="mt-2 text-xs text-texto-2">
-                Nenhuma chave pode aprovar proposta, excluir dados, mudar preços ou ver configurações: essas ações simplesmente não existem na API.
+                Nenhuma chave pode aprovar proposta, excluir dados, mudar preços ou ver configurações: essas ações simplesmente não existem na API. Para o painel do agente, crie uma segunda chave e marque só a leitura de negócios e “Devolver conversas ao agente”.
               </p>
             </fieldset>
             <div className="flex flex-col-reverse gap-2 border-t border-borda pt-4 sm:flex-row sm:justify-end">

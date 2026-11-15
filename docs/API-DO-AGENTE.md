@@ -58,6 +58,17 @@ Repetir uma chamada com segurança: contato é reaproveitado pelo telefone (`ja_
 mensagens com `id_externo` não duplicam; `GET` não altera nada. `POST /negocios` **cria um negócio
 novo a cada chamada**: antes de criar, busque por telefone em `GET /negocios?telefone=...`.
 
+**Telefones.** Envie com ou sem `+55`, com ou sem pontuação. Celular antigo sem o 9 extra
+(DDD + 8 dígitos começando por 6, 7, 8 ou 9, como alguns números chegam pelo WhatsApp) é tratado
+como o mesmo número com o 9: `553488935223` e `34988935223` acham o mesmo contato. O sistema
+guarda no formato atual (DDD + número, sem `+55`).
+
+**Não contatar.** Contatos e negócios trazem `nao_contatar`, `nao_contatar_em`,
+`nao_contatar_motivo`, `aceita_retomadas` e `aceita_retomadas_em`. Com `nao_contatar: true`,
+o agente **não puxa conversa nem manda retomada** (responder quando a pessoa chamar continua
+liberado). Retomada só para quem tem `aceita_retomadas: true`. Quando a pessoa pedir para parar,
+grave com `PATCH /contatos/:id`. As datas são preenchidas pelo sistema.
+
 Exemplo:
 
 ```bash
@@ -81,10 +92,17 @@ O gestor marca, ao criar a chave, o que ela pode fazer. Sem a permissão, a cham
 
 `contatos.ler` · `contatos.gravar` · `negocios.ler` · `negocios.gravar` · `agenda.ler` ·
 `catalogo.ler` · `precos.calcular` · `propostas.ler` · `propostas.gravar` · `propostas.enviar` ·
-`mensagens.ler` · `mensagens.gravar` · `atendimento.transferir` · `eventos.ler`
+`mensagens.ler` · `mensagens.gravar` · `atendimento.transferir` · `eventos.ler` ·
+`atendimento.devolver`
 
 Não existe permissão para aprovar proposta. Para um agente que só atende e nunca envia proposta,
 basta não marcar `propostas.enviar`.
+
+**Duas chaves.** `atendimento.devolver` (devolver uma conversa ao agente) **não vem marcada** ao
+criar uma chave. Ela é para uma **segunda chave, só do painel do agente**, usada quando uma
+pessoa clica em "devolver ao agente" ali. A chave usada pela IA não deve ter essa permissão:
+assim o agente nunca "pega" uma conversa sozinho. Sugestão para a chave do painel:
+`negocios.ler`, `mensagens.ler` e `atendimento.devolver`.
 
 ## 4. O caminho de um atendimento
 
@@ -164,6 +182,11 @@ Atualiza só os campos enviados.
 | `email` | texto |
 | `cidade` | texto |
 | `observacoes` | texto |
+| `nao_contatar` | `true` ou `false`: pediu para não receber mensagens (desliga as retomadas) |
+| `nao_contatar_motivo` | até 200 caracteres |
+| `aceita_retomadas` | `true` ou `false`: consentiu receber mensagens de retomada |
+
+As datas `nao_contatar_em` e `aceita_retomadas_em` são preenchidas pelo sistema.
 
 
 ### Negócios, evento, conversa e propostas do negócio
@@ -265,6 +288,17 @@ Pede atendimento humano. O agente deixa de poder alterar o negócio.
 |---|---|
 | `motivo` | obrigatório |
 
+**`POST /api/v1/negocios/:id/encaminhar-agente`** · permissão `atendimento.devolver` (só a chave do painel)  
+Uma **pessoa** devolve a conversa ao agente pelo painel. Mesmo efeito do botão "Passar para o
+agente" do CRM: grava a passagem, dispara `atendimento.encaminhado_agente` e registra o nome de
+quem pediu no registro do agente e na Auditoria. Se já estiver com o agente, responde
+`transferido: false`. Negócio encerrado: `409`.
+
+| Campo | Como preencher |
+|---|---|
+| `autor` | obrigatório: nome da pessoa que pediu no painel |
+| `motivo` | opcional |
+
 **`GET /api/v1/negocios/:id/propostas`** · permissão `propostas.ler`  
 Lista as propostas do negócio.
 
@@ -328,10 +362,11 @@ Diz se a data está livre, com vagas, lotada ou bloqueada.
 ### Catálogo e condições
 
 **`GET /api/v1/catalogo/pacotes`** · permissão `catalogo.ler`  
-Pacotes ativos com os drinks de cada um.
+Pacotes ativos com os drinks de cada um. Cada drink traz `foto_url` (endereço público completo da
+foto) quando houver.
 
 **`GET /api/v1/catalogo/drinks`** · permissão `catalogo.ler`  
-Drinks ativos.
+Drinks ativos, com `foto_url` quando houver. Drink sem foto: `null` (não envie imagem).
 
 **`GET /api/v1/catalogo/condicoes`** · permissão `catalogo.ler`  
 Dados da empresa e condições comerciais confirmadas pelo gestor.

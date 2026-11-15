@@ -168,6 +168,13 @@ export type ContatoRow = {
   origem_id: string | null;
   responsavel_id: string | null;
   observacoes: string | null;
+  /** Pediu para não receber mensagens (datas preenchidas pelo banco). */
+  nao_contatar: boolean;
+  nao_contatar_em: string | null;
+  nao_contatar_motivo: string | null;
+  /** Consentiu receber mensagens de retomada. */
+  aceita_retomadas: boolean;
+  aceita_retomadas_em: string | null;
   created_at: string;
   updated_at: string;
 };

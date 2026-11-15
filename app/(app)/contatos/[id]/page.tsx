@@ -13,6 +13,7 @@ import { formatarData, formatarTelefone, hojeISO } from "@/lib/formatar";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
 import { createClient } from "@/lib/supabase/server";
 import type { Atividade, Contato } from "@/lib/tipos";
+import { PreferenciasMensagens } from "./mensagens";
 import { Privacidade } from "./privacidade";
 
 export const metadata: Metadata = { title: "Contato" };
@@ -72,6 +73,7 @@ export default async function PaginaContato({ params }: { params: Promise<{ id: 
             {contato.responsavel_id && <span>Responsável: {nomeVendedor.get(contato.responsavel_id) ?? "—"}</span>}
           </p>
           <div className="mt-2 flex flex-wrap gap-1">
+            {contato.nao_contatar && <Selo cor="perigo">Não contatar</Selo>}
             {origem && <Selo>{origem}</Selo>}
             {contato.tags.map((t) => (
               <Selo key={t} cor="marca">
@@ -147,6 +149,15 @@ export default async function PaginaContato({ params }: { params: Promise<{ id: 
           </ul>
           {contato.observacoes && <p className="mt-3 text-sm whitespace-pre-line">{contato.observacoes}</p>}
           </Cartao>
+          <PreferenciasMensagens
+            id={contato.id}
+            nao_contatar={contato.nao_contatar}
+            nao_contatar_em={contato.nao_contatar_em}
+            nao_contatar_motivo={contato.nao_contatar_motivo}
+            aceita_retomadas={contato.aceita_retomadas}
+            aceita_retomadas_em={contato.aceita_retomadas_em}
+            pode={pode}
+          />
           {gestor && <Privacidade id={contato.id} nome={contato.nome} temFechados={negocios.some((n) => n.status === "ganho")} />}
         </div>
       </div>
