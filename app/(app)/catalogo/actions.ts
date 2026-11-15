@@ -166,6 +166,7 @@ const esquemaPacote = z.object({
   slogan: textoOpcional(160),
   descricao: textoOpcional(500),
   ordem: numero(0, 9999, "Ordem inválida."),
+  acrescimo_pct: numero(0, 300, "De 0 a 300%."),
   ativo: caixa,
   drinks: z.string().optional(),
 });

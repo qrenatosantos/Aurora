@@ -517,6 +517,8 @@ export type PacoteRow = {
   descricao: string | null;
   ordem: number;
   ativo: boolean;
+  /** Acréscimo (%) sobre o preço calculado, para os pacotes mais completos. */
+  acrescimo_pct: number;
   created_at: string;
   updated_at: string;
 };
@@ -575,6 +577,7 @@ export type ResultadoCalculo = {
     outra_cidade: number;
     total: number;
     margem_pct: number;
+    acrescimo_pacote_pct?: number;
   };
   preco_sugerido?: number;
   calculado_em?: string;

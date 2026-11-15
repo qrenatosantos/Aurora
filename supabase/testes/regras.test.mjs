@@ -285,6 +285,13 @@ describe("calculadora de insumos e preço", () => {
     assert.equal(Number(p.custos.outra_cidade), 200);
     assert.ok(Number(p.preco_sugerido) > Number(c.preco_sugerido));
 
+    // acréscimo do pacote: aplicado sobre custo + margem, antes do arredondamento
+    await gestor((tx) => tx.query("update pacotes set acrescimo_pct = 20 where id = $1", [essencial]));
+    const a = await gestor((tx) => valor(tx, "select public.calcular_preco($1::jsonb)", [JSON.stringify({ pacote_id: essencial, convidados: 60, duracao_horas: 4 })]));
+    assert.equal(Number(a.custos.acrescimo_pacote_pct), 20);
+    assert.equal(Number(a.preco_sugerido), Math.ceil((Number(c.custos.total) * 2 * 1.2) / 50) * 50);
+    await gestor((tx) => tx.query("update pacotes set acrescimo_pct = 0 where id = $1", [essencial]));
+
     // Aurora Boreal (autoral) continua sem receita: completa e aprova
     await gestor(async (tx) => {
       await tx.query(`insert into drink_insumos (drink_id, insumo_id, quantidade)

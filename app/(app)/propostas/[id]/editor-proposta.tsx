@@ -116,6 +116,7 @@ export function EditorProposta({ proposta, itens, drinks, gestor }: { proposta: 
         duracao_horas: numOuNulo(c.ev_duracao),
         linha: c.linha === "premium" ? "premium" : "tradicional",
         cidade: c.ev_cidade,
+        pacote_nome: c.pacote_nome,
       });
       if (r.ok && r.calculo) setCalculo(r.calculo);
       else toast.erro(r.mensagem ?? "Não foi possível calcular.");

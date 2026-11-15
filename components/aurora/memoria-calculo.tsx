@@ -30,6 +30,7 @@ export function MemoriaCalculo({ calculo }: { calculo: ResultadoCalculo }) {
           <p className="num text-2xl font-extrabold text-marca-forte">{formatarMoeda(calculo.preco_sugerido)}</p>
           <p className="text-xs text-texto-2">
             custo {formatarMoeda(c.total)} + margem de {n(c.margem_pct)}%
+            {Number(c.acrescimo_pacote_pct) > 0 ? ` + acréscimo do pacote de ${n(Number(c.acrescimo_pacote_pct))}%` : ""}
           </p>
         </div>
         <div className="rounded-xl bg-superficie-2 p-3">

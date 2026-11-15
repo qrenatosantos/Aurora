@@ -2597,6 +2597,11 @@ create table if not exists public.pacotes (
   updated_at timestamptz not null default now()
 );
 create unique index if not exists pacotes_nome_uidx on public.pacotes (lower(nome));
+-- Acréscimo do pacote sobre o preço calculado: os pacotes de cima têm mais drinks, mais preparo e
+-- mais variedade, mas a conta de insumos divide o consumo entre os drinks e pode sair mais barata.
+alter table public.pacotes add column if not exists acrescimo_pct numeric(5,2) not null default 0;
+alter table public.pacotes drop constraint if exists pacotes_acrescimo_ck;
+alter table public.pacotes add constraint pacotes_acrescimo_ck check (acrescimo_pct between 0 and 300);
 
 create table if not exists public.pacote_drinks (
   pacote_id  uuid not null references public.pacotes (id) on delete cascade,
@@ -2874,7 +2879,7 @@ begin
   v_bart := greatest(v_c.minimo_bartenders, ceil(v_conv::numeric / v_c.convidados_por_bartender)::integer);
   v_c_mao := round(v_bart * (v_horas + v_c.horas_montagem) * v_c.custo_bartender_hora, 2);
   v_c_total := v_c_insumos + v_c_mao + v_c.custo_fixo + case when v_fora then v_c.taxa_outra_cidade else 0 end;
-  v_preco := round(v_c_total * (1 + v_c.margem_pct / 100), 2);
+  v_preco := round(v_c_total * (1 + v_c.margem_pct / 100) * (1 + coalesce(v_pacote.acrescimo_pct, 0) / 100), 2);
   if v_c.arredondar_para > 0 then
     v_preco := ceil(v_preco / v_c.arredondar_para) * v_c.arredondar_para;
   end if;
@@ -2892,7 +2897,8 @@ begin
     'bartenders', v_bart,
     'custos', jsonb_build_object('insumos', v_c_insumos, 'compra_embalagens_inteiras', v_compra, 'mao_de_obra', v_c_mao,
                                  'fixo', v_c.custo_fixo, 'outra_cidade', case when v_fora then v_c.taxa_outra_cidade else 0 end,
-                                 'total', v_c_total, 'margem_pct', v_c.margem_pct),
+                                 'total', v_c_total, 'margem_pct', v_c.margem_pct,
+                                 'acrescimo_pacote_pct', coalesce(v_pacote.acrescimo_pct, 0)),
     'preco_sugerido', v_preco,
     'calculado_em', now());
 end;

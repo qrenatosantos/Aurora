@@ -159,14 +159,19 @@ export async function calcularParaProposta(entrada: {
   duracao_horas: number | null;
   linha: "tradicional" | "premium";
   cidade: string;
+  /** Nome do pacote da proposta: entra o acréscimo do pacote. Vazio = cardápio personalizado. */
+  pacote_nome?: string;
 }): Promise<{ ok: boolean; mensagem?: string; calculo?: ResultadoCalculo }> {
   const p = await exigirPerfil();
   if ("erro" in p) return { ok: false, mensagem: p.erro };
   const supabase = await createClient();
   const { data: config } = await supabase.from("configuracoes").select("cidade").limit(1).maybeSingle();
   const minha = (config?.cidade ?? "").split("/")[0].trim().toLowerCase();
+  const nomePacote = (entrada.pacote_nome ?? "").trim();
+  const { data: pacote } = nomePacote ? await supabase.from("pacotes").select("id").ilike("nome", nomePacote.replace(/[%_]/g, "")).limit(1).maybeSingle() : { data: null };
   const { data, error } = await supabase.rpc("calcular_preco", {
     p: {
+      pacote_id: pacote?.id ?? null,
       drinks: entrada.drinks.filter(ehUuid),
       convidados: entrada.convidados,
       duracao_horas: entrada.duracao_horas,

@@ -45,6 +45,7 @@ export function ListaPacotes({ pacotes, drinks, ligacoes, gestor }: { pacotes: P
                   <div className="min-w-0">
                     <h2 className="text-2xl font-semibold">{p.nome}</h2>
                     {p.slogan && <p className="text-sm text-texto-2 italic">{p.slogan}</p>}
+                    {Number(p.acrescimo_pct) > 0 && <p className="mt-1 text-xs text-texto-2">Acréscimo de {Number(p.acrescimo_pct).toLocaleString("pt-BR")}% sobre o preço calculado</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {!p.ativo && <Selo>Desativado</Selo>}
@@ -135,6 +136,14 @@ function DialogoPacote({
             {(p) => <Entrada {...p} type="number" min={0} defaultValue={pacote?.ordem ?? proximaOrdem} />}
           </Campo>
         </div>
+        <Campo
+          rotulo="Acréscimo do pacote (%)"
+          nome="acrescimo_pct"
+          erro={e.acrescimo_pct}
+          ajuda="Somado ao preço da calculadora. Use para os pacotes mais completos ficarem acima dos mais simples (ex.: Essencial 0%, Exclusive 30%)."
+        >
+          {(p) => <Entrada {...p} type="number" inputMode="decimal" min={0} max={300} step="0.5" defaultValue={pacote ? Number(pacote.acrescimo_pct) : 0} />}
+        </Campo>
         <Campo rotulo="Frase do pacote" nome="slogan" erro={e.slogan}>
           {(p) => <Entrada {...p} defaultValue={pacote?.slogan ?? ""} maxLength={160} placeholder="Ex.: Os clássicos que nunca falham." />}
         </Campo>
