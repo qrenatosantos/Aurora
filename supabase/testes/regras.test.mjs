@@ -624,7 +624,11 @@ describe("API do agente", () => {
     assert.equal(Number(forcar.dados.total), Number(at.dados.total));
 
     await api(chave, "propostas.submeter", { id: proposta, nota: "Ajustado." });
+    // o agente passou para humano (ex.: dúvida que não sabia responder); a aprovação devolve para ele
+    await api(chave, "atendimento.pedir_humano", { negocio_id: negocio, motivo: "Cliente perguntou o prazo de aprovação" });
+    assert.equal(await banco((tx) => valor(tx, "select atendimento from negocios where id = $1", [negocio])), "humano");
     await gestor((tx) => tx.query("update propostas set status = 'aprovada' where id = $1", [proposta]));
+    assert.equal(await banco((tx) => valor(tx, "select atendimento from negocios where id = $1", [negocio])), "agente");
     const env = await api(chave, "propostas.enviar", { id: proposta });
     assert.equal(env.status, 200);
     assert.equal(env.dados.status, "enviada");
@@ -653,7 +657,7 @@ describe("API do agente", () => {
     assert.equal(ped.dados.transferido, true);
     await banco(async (tx) => {
       assert.equal(await valor(tx, "select atendimento from negocios where id = $1", [negocio]), "humano");
-      assert.equal(await valor(tx, "select count(*)::int from atividades where negocio_id = $1 and titulo like 'Assumir atendimento%'", [negocio]), 1);
+      assert.equal(await valor(tx, "select count(*)::int from atividades where negocio_id = $1 and titulo like 'Assumir atendimento%' and not concluida", [negocio]), 1);
     });
     const bloqueado = await api(chave, "evento.atualizar", { negocio_id: negocio, convidados: 10 });
     assert.equal(bloqueado.status, 409);

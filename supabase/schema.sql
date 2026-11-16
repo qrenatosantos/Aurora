@@ -3687,6 +3687,20 @@ begin
          and not exists (select 1 from public.propostas x where x.negocio_id = new.negocio_id and x.id <> new.id and x.status = 'enviada');
     end if;
 
+    -- aprovada/enviada pelo gestor uma proposta que o AGENTE montou e, depois, passou para humano:
+    -- o atendimento volta para o agente, que entrega o link ao cliente. (Se uma pessoa ASSUMIU o
+    -- atendimento por conta própria, nada muda.)
+    if new.status in ('aprovada', 'enviada') and new.origem = 'agente'
+       and exists (select 1 from public.negocios n where n.id = new.negocio_id and n.status = 'aberto' and n.atendimento = 'humano')
+       and coalesce((select t.autor_tipo from public.transferencias t where t.negocio_id = new.negocio_id
+                      order by t.created_at desc limit 1), '') = 'agente' then
+      perform privado.transferir(new.negocio_id, 'agente', 'Proposta aprovada pelo gestor: o agente entrega o link ao cliente.', null, 'sistema');
+      -- a tarefa "Assumir atendimento" deixa de fazer sentido
+      update public.atividades set concluida = true, concluida_em = now(),
+             resultado = coalesce(resultado, 'Encerrada sozinha: a proposta foi aprovada e o agente retomou o atendimento.')
+       where negocio_id = new.negocio_id and not concluida and titulo like 'Assumir atendimento:%';
+    end if;
+
     -- aceita: os itens viram os produtos do negócio e o negócio é marcado como GANHO
     if new.status = 'aceita' then
       delete from public.negocio_produtos where negocio_id = new.negocio_id;
