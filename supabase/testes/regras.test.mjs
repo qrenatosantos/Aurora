@@ -595,8 +595,14 @@ describe("API do agente", () => {
     assert.equal((await api(chave, "propostas.atualizar", { id: proposta, capa_titulo: "x" })).status, 409);
     assert.equal((await api(chave, "propostas.enviar", { id: proposta })).status, 409);
 
-    // gestor não consegue aprovar sem valor; pede ajustes
-    await assert.rejects(gestor((tx) => tx.query("update propostas set status = 'aprovada' where id = $1", [proposta])), /Defina o valor/);
+    // o gestor recebe a proposta já com o valor da calculadora; o agente não vê o valor antes da aprovação
+    assert.ok(Number(await banco((tx) => valor(tx, "select total from propostas where id = $1", [proposta]))) > 0);
+    const vista = await api(chave, "propostas.obter", { id: proposta });
+    assert.equal(vista.dados.total, null);
+    assert.equal(vista.dados.preco_pendente, true);
+    const aviso = await banco((tx) => valor(tx, "select dados from eventos_saida where tipo = 'proposta.submetida' and proposta_id = $1 order by id desc limit 1", [proposta]));
+    assert.match(aviso.link_aprovacao, new RegExp(`/propostas/${proposta}$`));
+    assert.ok(aviso.gestor && aviso.gestor.nome);
     await gestor((tx) => tx.query("select public.aprovar_calculadora()"));
     await gestor((tx) => tx.query("update propostas set status = 'ajustes_solicitados', ajustes_comentario = 'Tirar o Fitzgerald e recalcular.' where id = $1", [proposta]));
 

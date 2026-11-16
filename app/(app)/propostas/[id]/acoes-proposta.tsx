@@ -121,7 +121,11 @@ export function AcoesProposta({
             {proposta.origem === "agente" ? " · montada pelo agente" : ""}.
           </p>
           {proposta.nota_interna && <p className="mt-1 whitespace-pre-line text-texto">Recado de quem montou: {proposta.nota_interna}</p>}
-          {semValor && <p className="mt-1 font-semibold">Falta definir o valor: preencha o investimento no editor abaixo antes de aprovar.</p>}
+          {semValor ? (
+            <p className="mt-1 font-semibold">Falta definir o valor: preencha o investimento no editor abaixo antes de aprovar.</p>
+          ) : (
+            <p className="mt-1 text-texto">Valor calculado pela calculadora. Confira e, se quiser, ajuste no editor abaixo. Está certo? É só aprovar.</p>
+          )}
         </div>
       )}
       {s === "aprovada" && (

@@ -132,6 +132,10 @@ contato (`PATCH /contatos/:id`), em vez de criar um negócio novo. Esses leads n
 agenda ("Leads novos do site vão para"). O agente só deve agir nos que vierem com
 `atendimento: "agente"`, ou quando chegar `atendimento.encaminhado_agente`.
 
+**Valor antes da aprovação.** A proposta chega ao gestor já com o valor da calculadora. Enquanto as
+regras de preço não forem aprovadas, a API mostra `total: null` e `preco_pendente: true` para o
+agente até o gestor aprovar a proposta: não informe valor ao cliente antes disso.
+
 **Quando o cliente acha caro.** Antes de passar para uma pessoa, ofereça, nesta ordem:
 1. **reduzir as horas** de serviço (`PUT /negocios/:id/evento` com nova `duracao_horas` e
    `PATCH /propostas/:id {"sincronizar": true}`);
@@ -455,7 +459,7 @@ segurança (por exemplo ao iniciar e a cada poucos minutos).
 | `atendimento.encaminhado_agente` | o gestor clicou em "Passar para o agente" | `codigo`, `titulo`, `motivo` |
 | `atendimento.assumido_humano` | uma pessoa clicou em "Assumir atendimento" | `codigo`, `titulo`, `motivo` |
 | `atendimento.pedido_humano` | o próprio agente pediu uma pessoa | `codigo`, `titulo`, `motivo` |
-| `proposta.submetida` | proposta enviada para aprovação | `numero`, `versao`, `status`, `total` |
+| `proposta.submetida` | proposta enviada para aprovação | `numero`, `versao`, `status`, `total`, `link_aprovacao` (link direto da proposta no sistema, para o gestor) e `gestor` (`nome`, `telefone`). Mande ao gestor no WhatsApp: "Proposta aguardando sua aprovação" + o link |
 | `proposta.aprovada` | o gestor aprovou: já pode enviar | `numero`, `versao`, `status`, `total` |
 | `proposta.ajustes_solicitados` | o gestor pediu mudanças | o mesmo, mais `comentario` (o que mudar) |
 | `proposta.enviada` | marcada como enviada (link liberado) | `numero`, `versao`, `status`, `total` |

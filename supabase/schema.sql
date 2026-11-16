@@ -3717,7 +3717,16 @@ begin
     if v_tipo is not null then
       perform privado.emitir_evento(v_tipo, new.negocio_id, new.id, null,
         jsonb_build_object('numero', new.numero, 'versao', new.versao, 'status', new.status, 'total', new.total,
-                           'comentario', case when new.status = 'ajustes_solicitados' then new.ajustes_comentario end));
+                           'comentario', case when new.status = 'ajustes_solicitados' then new.ajustes_comentario end)
+        || case when new.status = 'aguardando_aprovacao' then jsonb_build_object(
+             -- para o agente avisar o gestor no WhatsApp, com o link direto da aprovação
+             'link_aprovacao', nullif(current_setting('app.base_url', true), '') || '/propostas/' || new.id,
+             'gestor', (select jsonb_build_object('nome', v.nome, 'telefone', v.telefone)
+                          from public.vendedores v where v.id = coalesce(
+                            (select g.id from public.vendedores g join public.negocios n on n.vendedor_id = g.id
+                              where n.id = new.negocio_id and g.papel = 'gestor' and g.tipo = 'humano' and g.ativo),
+                            privado.gestor_padrao())))
+           else '{}'::jsonb end);
     end if;
   elsif old.visualizada_em is null and new.visualizada_em is not null then
     perform privado.emitir_evento('proposta.visualizada', new.negocio_id, new.id, null,
@@ -3790,7 +3799,9 @@ begin
       'linha', coalesce(v_ev.linha, 'tradicional'), 'sem_vidraria', v_p.sem_vidraria,
       'outra_cidade', v_ev.cidade is not null and v_cfg.cidade is not null
                       and lower(trim(v_ev.cidade)) <> lower(trim(split_part(v_cfg.cidade, '/', 1)))));
-    if (v_calc ->> 'ok')::boolean and (p_origem = 'humano' or (v_calc ->> 'aprovada')::boolean) then
+    -- o valor da calculadora entra sempre: o gestor confere antes de aprovar. Enquanto as regras não
+    -- estiverem aprovadas, a API esconde o valor do agente (ver privado.json_proposta).
+    if (v_calc ->> 'ok')::boolean then
       v_preco := (v_calc ->> 'preco_sugerido')::numeric;
     end if;
   end if;
@@ -5269,7 +5280,13 @@ set search_path = public
 as $$
   select jsonb_build_object(
     'id', p.id, 'negocio_id', p.negocio_id, 'numero', p.numero, 'versao', p.versao, 'status', p.status, 'origem', p.origem,
-    'titulo', p.titulo, 'validade', p.validade, 'total', p.total, 'preco_pendente', p.preco_pendente,
+    'titulo', p.titulo, 'validade', p.validade,
+    -- antes da aprovação, com regras de preço provisórias, o agente não vê o valor (não pode informá-lo)
+    'total', case when p.status in ('rascunho', 'aguardando_aprovacao', 'ajustes_solicitados')
+                       and not coalesce((select c.aprovada from public.calculadora c where c.unica), false)
+                  then null else p.total end,
+    'preco_pendente', p.preco_pendente or (p.status in ('rascunho', 'aguardando_aprovacao', 'ajustes_solicitados')
+                                           and not coalesce((select c.aprovada from public.calculadora c where c.unica), false)),
     'submetida_em', p.aprovacao_pedida_em, 'aprovada_em', p.aprovada_em, 'enviada_em', p.enviada_em,
     'visualizada_em', p.visualizada_em, 'aceita_em', p.aceita_em,
     'ajustes', case when p.ajustes_comentario is not null
