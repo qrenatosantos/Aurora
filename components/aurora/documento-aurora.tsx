@@ -198,7 +198,7 @@ export function DocumentoAurora({
                 <path d="M3 9a9 9 0 0 1 4-5M21 15a9 9 0 0 1-4 5" />
                 <path d="M3 4v5h5M21 20v-5h-5" />
               </svg>
-              Gire o celular para ver a proposta como ela foi diagramada.
+              Gire o celular para uma melhor experiência de leitura.
             </p>
             {/* eslint-disable-next-line @next/next/no-img-element -- logo da marca (arquivo local ou Storage) */}
             <img src={logo} alt={`Logo de ${empresa.nome}`} style={{ width: "9.5em", height: "9.5em", objectFit: "contain", borderRadius: "0.6em" }} />
