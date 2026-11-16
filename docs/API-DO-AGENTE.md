@@ -132,6 +132,22 @@ contato (`PATCH /contatos/:id`), em vez de criar um negócio novo. Esses leads n
 agenda ("Leads novos do site vão para"). O agente só deve agir nos que vierem com
 `atendimento: "agente"`, ou quando chegar `atendimento.encaminhado_agente`.
 
+**Quando o cliente acha caro.** Antes de passar para uma pessoa, ofereça, nesta ordem:
+1. **reduzir as horas** de serviço (`PUT /negocios/:id/evento` com nova `duracao_horas` e
+   `PATCH /propostas/:id {"sincronizar": true}`);
+2. **dispensar a vidraria** e usar copos descartáveis (`PATCH /propostas/:id {"sem_vidraria": true}`).
+   O valor do desconto vem da calculadora (`POST /precos/calcular` com `sem_vidraria: true`).
+
+Nunca ofereça desconto fora dessas duas opções.
+
+**Título do negócio.** Quando o agente grava o nome do contato ou o tipo do evento, o título
+automático do negócio ("Casamento · Ana Paula") é refeito sozinho.
+
+**Aceite da proposta.** Quando o cliente aceita pelo link, o negócio vira ganho, a data fica
+confirmada, o gestor recebe a tarefa "Cobrar a entrada" no sistema e chega o aviso
+`proposta.aceita`. A página do link oferece ao cliente o botão "Avisar a Aurora pelo WhatsApp",
+com a mensagem "Acabei de aceitar a proposta PROP-... (pedido ...)".
+
 **Quando passar para uma pessoa.** Sempre que faltar informação cadastrada (preço indisponível,
 condição `null`, data lotada ou bloqueada, pedido fora dos pacotes, pedido de desconto), o caminho
 é `transferir-humano` com um motivo claro. O sistema cria uma tarefa para o gestor e mostra o
@@ -328,6 +344,7 @@ Altera o rascunho (ou a proposta com ajustes solicitados).
 |---|---|
 | `drinks` | lista de ids (refaz cardápio e preço) |
 | `sincronizar` | true = refaz evento, cardápio e preço a partir do negócio |
+| `sem_vidraria` | true ou false: copos descartáveis no lugar da vidraria (refaz o preço com o desconto) |
 | `capa_titulo` | texto |
 | `capa_subtitulo` | texto |
 | `apresentacao` | texto |
@@ -336,7 +353,11 @@ Altera o rascunho (ou a proposta com ajustes solicitados).
 | `nota` | texto |
 
 **`POST /api/v1/propostas/:id/submeter`** · permissão `propostas.gravar`  
-Submete à aprovação do gestor.
+Submete à aprovação do gestor. **O sistema recusa (422)** a proposta sem: nome de verdade do
+cliente (nomes como "Cliente do WhatsApp" não valem), duração do serviço em horas, número de
+convidados e data ou mês previsto. A mensagem diz o que falta: pergunte ao cliente, grave com
+`PATCH /contatos/:id` e `PUT /negocios/:id/evento`, atualize a proposta com
+`PATCH /propostas/:id {"sincronizar": true}` e submeta de novo.
 
 | Campo | Como preencher |
 |---|---|
@@ -383,6 +404,7 @@ Preço pelas regras APROVADAS. Sem regra aprovada, devolve disponivel: false.
 | Campo | Como preencher |
 |---|---|
 | `pacote_id` | ou drinks: [ids] |
+| `sem_vidraria` | true = copos descartáveis no lugar da vidraria (aplica o desconto configurado) |
 | `convidados` | número |
 | `duracao_horas` | número |
 | `linha` | tradicional ou premium |

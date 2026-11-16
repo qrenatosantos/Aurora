@@ -314,6 +314,15 @@ describe("calculadora de insumos e preço", () => {
     assert.equal(Number(a.preco_sugerido), Math.ceil((Number(c.custos.total) * 2 * 1.2) / 50) * 50);
     await gestor((tx) => tx.query("update pacotes set acrescimo_pct = 0 where id = $1", [essencial]));
 
+    // sem vidraria (copos descartáveis): desconto fixo configurado na calculadora
+    await gestor((tx) => tx.query("update calculadora set desconto_sem_vidraria = 100, arredondar_para = 0"));
+    const comVidro = await gestor((tx) => valor(tx, "select public.calcular_preco($1::jsonb)", [JSON.stringify({ pacote_id: essencial, convidados: 60, duracao_horas: 4 })]));
+    const semVidro = await gestor((tx) => valor(tx, "select public.calcular_preco($1::jsonb)", [JSON.stringify({ pacote_id: essencial, convidados: 60, duracao_horas: 4, sem_vidraria: true })]));
+    assert.equal(Number(comVidro.preco_sugerido) - Number(semVidro.preco_sugerido), 100);
+    assert.equal(semVidro.entrada.sem_vidraria, true);
+    assert.equal(Number(semVidro.custos.desconto_sem_vidraria), 100);
+    await gestor((tx) => tx.query("update calculadora set arredondar_para = 50"));
+
     // Aurora Boreal (autoral) continua sem receita: completa e aprova
     await gestor(async (tx) => {
       await tx.query(`insert into drink_insumos (drink_id, insumo_id, quantidade)
@@ -445,6 +454,8 @@ describe("proposta: aprovação obrigatória antes do envio", () => {
     assert.equal(ok.ok, true);
     const denovo = await visitante((tx) => valor(tx, "select public.aceitar_proposta_publica($1, 'Vitória Lima')", [codigoPublico]));
     assert.equal(denovo.ja_aceita, true);
+    // aceite vira tarefa de cobrança para o dono do negócio
+    assert.equal(await banco((tx) => valor(tx, "select count(*)::int from atividades where negocio_id = $1 and titulo like 'Cobrar a entrada:%' and descricao like '%Aguardando pagamento%'", [negocio])), 1);
 
     await banco(async (tx) => {
       const n = await um(tx, "select * from negocios where id = $1", [negocio]);
@@ -570,6 +581,16 @@ describe("API do agente", () => {
     assert.equal(cedo.status, 409);
     assert.match(cedo.erro.mensagem, /APROVADAS/);
 
+    // sem o nome de verdade do cliente, o gestor não recebe a proposta
+    const nomeAntes = await banco((tx) => valor(tx, "select c.nome from contatos c join negocios n on n.contato_id = c.id where n.id = $1", [negocio]));
+    const contatoId = await banco((tx) => valor(tx, "select contato_id from negocios where id = $1", [negocio]));
+    await api(chave, "contatos.atualizar", { id: contatoId, nome: "Cliente do WhatsApp" });
+    const semNome = await api(chave, "propostas.submeter", { id: proposta });
+    assert.equal(semNome.status, 422);
+    assert.match(semNome.erro.mensagem, /nome do cliente/);
+    await api(chave, "contatos.atualizar", { id: contatoId, nome: nomeAntes });
+    // título automático acompanha o nome do contato
+    assert.match(await banco((tx) => valor(tx, "select titulo from negocios where id = $1", [negocio])), new RegExp(` · ${nomeAntes}$`));
     assert.equal((await api(chave, "propostas.submeter", { id: proposta })).dados.status, "aguardando_aprovacao");
     assert.equal((await api(chave, "propostas.atualizar", { id: proposta, capa_titulo: "x" })).status, 409);
     assert.equal((await api(chave, "propostas.enviar", { id: proposta })).status, 409);

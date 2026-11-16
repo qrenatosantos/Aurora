@@ -231,6 +231,7 @@ const esquemaCalculadora = z.object({
   margem_pct: numeroOpcional(0, 1000, "De 0 a 1.000."),
   arredondar_para: precoOpcional.transform((v) => v ?? 0),
   preco_minimo: precoOpcional.transform((v) => v ?? 0),
+  desconto_sem_vidraria: precoOpcional.transform((v) => v ?? 0),
 });
 
 export async function salvarCalculadora(_anterior: EstadoAcao, formData: FormData): Promise<EstadoAcao> {
@@ -262,6 +263,7 @@ export async function simularPreco(entrada: {
   duracao_horas: number;
   linha: "tradicional" | "premium";
   outra_cidade: boolean;
+  sem_vidraria?: boolean;
 }): Promise<{ ok: boolean; mensagem?: string; calculo?: ResultadoCalculo }> {
   const p = await exigirPerfil();
   if ("erro" in p) return { ok: false, mensagem: p.erro };
@@ -274,6 +276,7 @@ export async function simularPreco(entrada: {
       duracao_horas: Number(entrada.duracao_horas) || 0,
       linha: entrada.linha === "premium" ? "premium" : "tradicional",
       outra_cidade: Boolean(entrada.outra_cidade),
+      sem_vidraria: Boolean(entrada.sem_vidraria),
     },
   });
   if (error) return { ok: false, mensagem: mensagemErroBanco(error) };

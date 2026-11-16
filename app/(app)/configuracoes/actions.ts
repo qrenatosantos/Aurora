@@ -84,6 +84,12 @@ const esquemaAurora = z.object({
     .transform((v) => Number(v.replace(",", ".")))
     .refine((v) => Number.isFinite(v) && v >= 0.5 && v <= 24, "De 0,5 a 24 horas."),
   atendimento_novos_leads: z.enum(["humano", "agente"]),
+  whatsapp_atendimento: z
+    .string()
+    .optional()
+    .transform((v) => somenteDigitos(v))
+    .refine((v) => v === "" || (v.length >= 10 && v.length <= 13), "WhatsApp com DDD, ex.: (34) 90000-0000.")
+    .transform((v) => (v === "" ? null : v)),
 });
 
 export async function salvarConfigAurora(_anterior: EstadoAcao, formData: FormData): Promise<EstadoAcao> {

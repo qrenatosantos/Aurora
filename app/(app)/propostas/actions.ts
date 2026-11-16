@@ -65,6 +65,7 @@ const esquema = z.object({
   nota_interna: textoCurto(1000),
   pacote_nome: textoCurto(80),
   linha: z.enum(["tradicional", "premium"]),
+  sem_vidraria: z.boolean().optional(),
   entrada_pct: numeroOuVazio(0, 100),
   entrada_dias_antes: numeroOuVazio(0, 365),
   saldo_dias_antes: numeroOuVazio(0, 365),
@@ -161,6 +162,7 @@ export async function calcularParaProposta(entrada: {
   cidade: string;
   /** Nome do pacote da proposta: entra o acréscimo do pacote. Vazio = cardápio personalizado. */
   pacote_nome?: string;
+  sem_vidraria?: boolean;
 }): Promise<{ ok: boolean; mensagem?: string; calculo?: ResultadoCalculo }> {
   const p = await exigirPerfil();
   if ("erro" in p) return { ok: false, mensagem: p.erro };
@@ -176,6 +178,7 @@ export async function calcularParaProposta(entrada: {
       convidados: entrada.convidados,
       duracao_horas: entrada.duracao_horas,
       linha: entrada.linha,
+      sem_vidraria: Boolean(entrada.sem_vidraria),
       outra_cidade: Boolean(minha && entrada.cidade.trim() && entrada.cidade.trim().toLowerCase() !== minha),
     },
   });

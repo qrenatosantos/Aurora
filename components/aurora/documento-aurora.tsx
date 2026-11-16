@@ -1,6 +1,6 @@
 /**
  * DOCUMENTO DA PROPOSTA DA AURORA — as "páginas" no padrão da proposta-modelo:
- * capa, partes, objeto do contrato, detalhes do evento, cardápio, compromissos,
+ * capa, partes, objeto da proposta, detalhes do evento, cardápio, compromissos,
  * vidraria, responsabilidades, investimento (entrada e saldo), termos e agradecimento.
  *
  * Usado na tela interna (prévia e impressão/PDF) e no link público do cliente.
@@ -10,7 +10,7 @@
  * Página que não tem conteúdo (ex.: nenhum drink com copo definido, nenhuma condição
  * de cancelamento) simplesmente não aparece: o documento nunca mostra dado inventado.
  */
-import { COPOS, dataPorExtenso, diaDaSemana, entradaESaldo, horasTexto, mesPorExtenso, nomeTipoEvento } from "@/lib/aurora";
+import { COPOS, copoDoDrink, dataPorExtenso, fotoDoDrink, diaDaSemana, entradaESaldo, horasTexto, mesPorExtenso, nomeTipoEvento } from "@/lib/aurora";
 import { formatarData, formatarDataHora, formatarMoeda } from "@/lib/formatar";
 import { itensComTitulo, linhasDe, textoProposta } from "@/lib/proposta-textos";
 import type { Copo, DrinkCardapio, EventoProposta } from "@/lib/tipos";
@@ -25,6 +25,7 @@ export type PropostaAurora = {
   cardapio: DrinkCardapio[];
   pacote_nome: string | null;
   linha: string | null;
+  sem_vidraria?: boolean | null;
   capa_titulo: string | null;
   capa_subtitulo: string | null;
   capa_foto_url: string | null;
@@ -100,10 +101,10 @@ function Pagina({ rotulo, titulo, intro, numero, total, children }: { rotulo: st
 }
 
 /** Desenhos simples dos recipientes (página "Vidraria"). */
-function Recipiente({ tipo }: { tipo: Copo }) {
+function Recipiente({ tipo }: { tipo: Copo | "descartavel" }) {
   const vidro = { fill: "rgba(210,235,240,0.16)", stroke: "#cfe8ee", strokeWidth: 2.2, strokeLinejoin: "round" as const };
   return (
-    <svg viewBox="0 0 120 120" role="img" aria-label={COPOS.find((c) => c.id === tipo)?.nome ?? "Recipiente"} style={{ width: "100%", height: "100%" }}>
+    <svg viewBox="0 0 120 120" role="img" aria-label={COPOS.find((c) => c.id === tipo)?.nome ?? (tipo === "descartavel" ? "Copo descartável" : "Recipiente")} style={{ width: "100%", height: "100%" }}>
       <circle cx="60" cy="62" r="50" fill="rgba(247,242,232,0.045)" />
       <circle cx="60" cy="62" r="36" fill="rgba(247,242,232,0.05)" />
       {tipo === "long_drink" && (
@@ -130,8 +131,16 @@ function Recipiente({ tipo }: { tipo: Copo }) {
       )}
       {(tipo === "taca" || tipo === "outro") && (
         <>
-          <path d="M36 24h48c0 22-10 36-24 38-14-2-24-16-24-38z" {...vidro} />
-          <path d="M60 62v32M44 98h32" stroke="#cfe8ee" strokeWidth="2.4" strokeLinecap="round" />
+          {/* taça de gin: bojo grande e haste */}
+          <path d="M37 20h46c4 10 6 20 4 29-3 13-14 20-27 20s-24-7-27-20c-2-9 0-19 4-29z" {...vidro} />
+          <path d="M40 40h40" stroke="#cfe8ee" strokeWidth="1.2" opacity=".55" />
+          <path d="M60 69v24M45 99c4-4 26-4 30 0" stroke="#cfe8ee" strokeWidth="2.4" strokeLinecap="round" fill="none" />
+        </>
+      )}
+      {tipo === "descartavel" && (
+        <>
+          <path d="M40 30h40l-6 68H46z" fill="rgba(247,242,232,0.12)" stroke="#cfe8ee" strokeWidth="2.2" strokeLinejoin="round" />
+          <path d="M38 30h44" stroke="#cfe8ee" strokeWidth="3" strokeLinecap="round" />
         </>
       )}
     </svg>
@@ -157,7 +166,9 @@ export function DocumentoAurora({
   const logo = logoUrl || "/aurora/aurora-512.png";
 
   const cardapio = (p.cardapio ?? []).filter((d) => d && d.nome);
-  const copos = Array.from(new Set(cardapio.map((d) => d.copo).filter((c): c is Copo => Boolean(c) && c !== "outro"))).slice(0, 4);
+  // vidraria: copo baixo e long drink sempre; taça de gin e caneca quando o cardápio pede
+  const coposDoCardapio = new Set(cardapio.map((d) => copoDoDrink(d)));
+  const copos: (Copo | "descartavel")[] = p.sem_vidraria ? ["descartavel"] : ["baixo", "long_drink", ...(coposDoCardapio.has("taca") ? (["taca"] as const) : []), ...(coposDoCardapio.has("caneca") ? (["caneca"] as const) : [])];
   const temCancelamento = p.cancelamento_aviso_dias !== null || p.cancelamento_multa_pct !== null;
   const disposicoes = [...(p.foro ? [`Foro da ${p.foro.replace(/^foro d[aeo] /i, "")}.`] : []), ...linhasDe(t("disposicoes"))];
   const temTermos = temCancelamento || disposicoes.length > 0;
@@ -168,7 +179,7 @@ export function DocumentoAurora({
   const itensExtras = itens.length > 1 ? itens : [];
 
   // páginas presentes (para numerar "02 / 11")
-  const paginas = ["capa", "partes", "objeto", "evento", ...(cardapio.length ? ["cardapio"] : []), "compromissos", ...(copos.length ? ["vidraria"] : []), "responsabilidades", "investimento", ...(temTermos ? ["termos"] : []), "final"];
+  const paginas = ["capa", "partes", "objeto", "evento", ...(cardapio.length ? ["cardapio"] : []), "compromissos", "vidraria", "responsabilidades", "investimento", ...(temTermos ? ["termos"] : []), "final"];
   const total = paginas.length;
   const n = (id: string) => paginas.indexOf(id) + 1;
   const secao = (id: string) => String(paginas.filter((x) => x !== "capa" && x !== "final").indexOf(id) + 1).padStart(2, "0");
@@ -181,6 +192,14 @@ export function DocumentoAurora({
       <section className="pa-pagina" aria-label="Capa">
         <div className="pa-capa">
           <div className="pa-in" style={{ justifyContent: "center" }}>
+            <p className="pa-girar nao-imprimir" role="note">
+              <svg viewBox="0 0 24 24" aria-hidden width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="7" y="3" width="10" height="18" rx="2" className="pa-girar-cel" />
+                <path d="M3 9a9 9 0 0 1 4-5M21 15a9 9 0 0 1-4 5" />
+                <path d="M3 4v5h5M21 20v-5h-5" />
+              </svg>
+              Gire o celular para ver a proposta como ela foi diagramada.
+            </p>
             {/* eslint-disable-next-line @next/next/no-img-element -- logo da marca (arquivo local ou Storage) */}
             <img src={logo} alt={`Logo de ${empresa.nome}`} style={{ width: "9.5em", height: "9.5em", objectFit: "contain", borderRadius: "0.6em" }} />
             <p className="pa-rotulo" style={{ marginTop: "2em" }}>
@@ -198,7 +217,7 @@ export function DocumentoAurora({
             </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", borderLeft: "1px solid var(--pa-linha)" }}>
-            <div className="pa-capa-foto" style={{ flex: 1, minHeight: 0 }}>
+            <div className="pa-capa-foto" style={{ flex: 1 }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- foto da proposta (qualquer origem) */}
               <img src={foto("capa", p.capa_foto_url)} alt="" className="pa-foto" style={{ position: "absolute", inset: 0 }} />
             </div>
@@ -214,14 +233,14 @@ export function DocumentoAurora({
       {/* ------------------------------------------------------------ PARTES */}
       <Pagina rotulo={`${secao("partes")} / Apresentação`} titulo="Partes da proposta" intro={p.apresentacao} numero={n("partes")} total={total}>
         <div className="pa-grade-2" style={{ height: "100%", alignItems: "stretch" }}>
-          <div className="pa-so-largo pa-quadro-foto">
+          <div className="pa-quadro-foto pa-foto-celular">
             {/* eslint-disable-next-line @next/next/no-img-element -- foto da equipe */}
             <img src={foto("apresentacao")} alt="" />
           </div>
           <div className="pa-cartao" style={{ padding: "1.4em 2em" }}>
             <p className="pa-rotulo">Partes da proposta</p>
             <div className="pa-regua" style={{ margin: "0.9em 0 1em", background: "rgba(247,242,232,0.16)" }} />
-            <p className="pa-rotulo">Contratante</p>
+            <p className="pa-rotulo">Cliente</p>
             <p className="pa-titulo" style={{ fontSize: "2em", marginTop: "0.2em" }}>
               {cliente.nome || "A definir"}
             </p>
@@ -229,7 +248,7 @@ export function DocumentoAurora({
               {[ev.local, cidadeUf(ev.cidade, ev.uf)].filter(Boolean).join("  •  ")}
             </p>
             <div className="pa-regua" style={{ margin: "1em 0", background: "rgba(247,242,232,0.16)" }} />
-            <p className="pa-rotulo">Contratado</p>
+            <p className="pa-rotulo">Quem atende</p>
             <p className="pa-titulo" style={{ fontSize: "2em", marginTop: "0.2em" }}>
               {empresa.nome}
             </p>
@@ -242,7 +261,7 @@ export function DocumentoAurora({
       </Pagina>
 
       {/* ------------------------------------------------------------ OBJETO */}
-      <Pagina rotulo={`${secao("objeto")} / Nossos serviços`} titulo="Objeto do contrato" intro={t("objeto_intro")} numero={n("objeto")} total={total}>
+      <Pagina rotulo={`${secao("objeto")} / Nossos serviços`} titulo="Objeto da proposta" intro={t("objeto_intro")} numero={n("objeto")} total={total}>
         <ol style={{ display: "grid", gap: "0.65em", listStyle: "none", margin: 0, padding: 0 }}>
           {[...itensComTitulo(t("objeto")), { titulo: "Validade da proposta", texto: `Válida até ${formatarData(p.validade)}, sujeita à disponibilidade da data e a ajustes por proximidade do evento.` }].map((item, i) => (
             <li key={i} className="pa-cartao" style={{ display: "grid", gridTemplateColumns: "4.2em 1fr", alignItems: "center", padding: "0.6em 1.6em" }}>
@@ -298,25 +317,33 @@ export function DocumentoAurora({
           total={total}
         >
           <ul className={colunasCardapio} style={{ listStyle: "none", margin: 0, padding: 0, gap: compacto ? "0.6em" : undefined }}>
-            {cardapio.map((d, i) => (
-              <li key={i} className="pa-cartao" style={{ display: "grid", gridTemplateColumns: d.foto_url && !compacto ? "8em 1fr" : "1fr", gap: "1.2em", alignItems: "center", padding: compacto ? "0.7em 1.1em" : "0.8em", minHeight: compacto ? undefined : "6em" }}>
-                {d.foto_url && !compacto && (
-                  // eslint-disable-next-line @next/next/no-img-element -- foto do drink (qualquer origem)
-                  <img src={d.foto_url} alt="" style={{ width: "8em", height: "8em", objectFit: "cover", borderRadius: "0.6em" }} />
-                )}
-                <div style={{ padding: d.foto_url && !compacto ? "0 0.6em 0 0" : "0.2em 0.6em" }}>
-                  <p className="pa-titulo pa-ouro" style={{ fontSize: compacto ? "1.15em" : "1.35em", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                    {d.nome}
-                  </p>
-                  {d.descricao && (
-                    <>
-                      <div className="pa-regua" style={{ margin: "0.6em 0", background: "rgba(247,242,232,0.16)" }} />
-                      <p style={{ fontSize: compacto ? "0.86em" : "0.95em" }}>{d.descricao}</p>
-                    </>
-                  )}
-                </div>
-              </li>
-            ))}
+            {cardapio.map((d, i) => {
+              const fotoDrink = fotoDoDrink(d);
+              return (
+                <li key={i} className="pa-cartao" style={{ display: "grid", gridTemplateColumns: compacto ? "1fr" : "8em 1fr", gap: "1.2em", alignItems: "center", padding: compacto ? "0.7em 1.1em" : "0.8em", minHeight: compacto ? undefined : "6em" }}>
+                  {!compacto &&
+                    (fotoDrink ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- foto do drink (qualquer origem)
+                      <img src={fotoDrink} alt="" style={{ width: "8em", height: "8em", objectFit: "cover", borderRadius: "0.6em" }} />
+                    ) : (
+                      <div aria-hidden style={{ width: "8em", height: "8em", borderRadius: "0.6em", background: "rgba(247,242,232,0.05)", padding: "0.8em" }}>
+                        <Recipiente tipo={copoDoDrink(d)} />
+                      </div>
+                    ))}
+                  <div style={{ padding: compacto ? "0.2em 0.6em" : "0 0.6em 0 0" }}>
+                    <p className="pa-titulo pa-ouro" style={{ fontSize: compacto ? "1.15em" : "1.35em", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                      {d.nome}
+                    </p>
+                    {d.descricao && (
+                      <>
+                        <div className="pa-regua" style={{ margin: "0.6em 0", background: "rgba(247,242,232,0.16)" }} />
+                        <p style={{ fontSize: compacto ? "0.86em" : "0.95em" }}>{d.descricao}</p>
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </Pagina>
       )}
@@ -345,11 +372,11 @@ export function DocumentoAurora({
 
       {/* ------------------------------------------------------------ VIDRARIA */}
       {copos.length > 0 && (
-        <Pagina rotulo={`${secao("vidraria")} / Apresentação`} titulo="Vidraria & drinks" intro="Os recipientes utilizados no serviço." numero={n("vidraria")} total={total}>
-          <div className={copos.length >= 4 ? "pa-grade-4" : "pa-grade-3"}>
+        <Pagina rotulo={`${secao("vidraria")} / Apresentação`} titulo={p.sem_vidraria ? "Copos & drinks" : "Vidraria & drinks"} intro={p.sem_vidraria ? "Nesta proposta, o serviço usa copos descartáveis no lugar da vidraria." : "Os recipientes utilizados no serviço."} numero={n("vidraria")} total={total}>
+          <div className={copos.length >= 4 ? "pa-grade-4" : copos.length === 3 ? "pa-grade-3" : copos.length === 2 ? "pa-grade-2" : "pa-grade-3"}>
             {copos.map((c, i) => {
-              const info = COPOS.find((x) => x.id === c)!;
-              const usados = cardapio.filter((d) => d.copo === c).map((d) => d.nome);
+              const info = c === "descartavel" ? { nome: "Copos descartáveis", descricao: "Para todos os drinks do cardápio." } : COPOS.find((x) => x.id === c)!;
+              const usados = c === "descartavel" ? [] : cardapio.filter((d) => copoDoDrink(d) === c).map((d) => d.nome);
               return (
                 <div key={c} className="pa-cartao" style={{ padding: "1.1em 1.6em" }}>
                   <p className="pa-rotulo">{String(i + 1).padStart(2, "0")}</p>
@@ -361,7 +388,7 @@ export function DocumentoAurora({
                   <p className="pa-ouro" style={{ fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
                     {info.nome}
                   </p>
-                  <p style={{ fontSize: "0.9em", marginTop: "0.3em" }}>Para: {usados.join(", ")}.</p>
+                  <p style={{ fontSize: "0.9em", marginTop: "0.3em" }}>{usados.length ? `Para: ${usados.join(", ")}.` : info.descricao}</p>
                 </div>
               );
             })}
@@ -395,7 +422,7 @@ export function DocumentoAurora({
               </p>
             )}
           </div>
-          <div className="pa-so-largo pa-quadro-foto">
+          <div className="pa-quadro-foto pa-foto-celular">
             {/* eslint-disable-next-line @next/next/no-img-element -- foto ilustrativa */}
             <img src={foto("responsabilidades")} alt="" />
           </div>
@@ -405,7 +432,7 @@ export function DocumentoAurora({
       {/* ------------------------------------------------------------ INVESTIMENTO */}
       <Pagina rotulo={`${secao("investimento")} / Investimento`} titulo="Pacote de serviços" intro={t("investimento_intro")} numero={n("investimento")} total={total}>
         <div className="pa-cartao pa-cartao-ouro pa-grade-2" style={{ height: "100%", padding: "1.3em", gap: "2.2em", alignItems: "stretch" }}>
-          <div className="pa-so-largo pa-quadro-foto">
+          <div className="pa-quadro-foto pa-foto-celular">
             {/* eslint-disable-next-line @next/next/no-img-element -- foto ilustrativa */}
             <img src={foto("investimento")} alt="" />
           </div>
@@ -466,7 +493,7 @@ export function DocumentoAurora({
 
       {/* ------------------------------------------------------------ TERMOS */}
       {temTermos && (
-        <Pagina rotulo={`${secao("termos")} / Termos`} titulo="Termos de rescisão" intro={t("termos_intro")} numero={n("termos")} total={total}>
+        <Pagina rotulo={`${secao("termos")} / Termos`} titulo="Condições da proposta" intro={t("termos_intro")} numero={n("termos")} total={total}>
           <div className={temCancelamento && disposicoes.length ? "pa-grade-2" : ""} style={{ display: "grid", gap: "1.6em" }}>
             {temCancelamento && (
               <div className="pa-cartao" style={{ padding: "1.8em 2em", minHeight: "12em" }}>
@@ -503,7 +530,7 @@ export function DocumentoAurora({
       {/* ------------------------------------------------------------ FINAL */}
       <section className="pa-pagina" aria-label="Agradecimento">
         <div className="pa-capa pa-capa-final">
-          <div className="pa-capa-foto pa-so-largo" style={{ position: "relative" }}>
+          <div className="pa-capa-foto" style={{ position: "relative" }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- foto final (qualquer origem) */}
             <img src={foto("final", p.foto_final_url)} alt="" className="pa-foto" style={{ position: "absolute", inset: 0 }} />
           </div>

@@ -35,7 +35,7 @@ export function TelaCalculadora({
   const [aprovando, iniciarAprovacao] = useTransition();
   const [simulando, iniciarSimulacao] = useTransition();
   const [resultado, setResultado] = useState<ResultadoCalculo | null>(null);
-  const [sim, setSim] = useState({ pacote_id: pacotes[0]?.id ?? "", convidados: "100", duracao_horas: "4", linha: "tradicional" as "tradicional" | "premium", outra_cidade: false });
+  const [sim, setSim] = useState({ pacote_id: pacotes[0]?.id ?? "", convidados: "100", duracao_horas: "4", linha: "tradicional" as "tradicional" | "premium", outra_cidade: false, sem_vidraria: false });
   const { onSubmit, erros: e, pendente } = useAcao(salvarCalculadora, { aoSucesso: () => router.refresh() });
   const completa = pendencias.length === 0;
 
@@ -47,6 +47,7 @@ export function TelaCalculadora({
         duracao_horas: Number(sim.duracao_horas.replace(",", ".")),
         linha: sim.linha,
         outra_cidade: sim.outra_cidade,
+        sem_vidraria: sim.sem_vidraria,
       });
       if (r.ok && r.calculo) setResultado(r.calculo);
       else {
@@ -147,6 +148,14 @@ export function TelaCalculadora({
                 <Campo rotulo="Preço mínimo de um evento" nome="preco_minimo" erro={e.preco_minimo}>
                   {(p) => <EntradaMoeda {...p} defaultValue={valorCampo(calc?.preco_minimo ?? 0)} placeholder="0,00" />}
                 </Campo>
+                <Campo
+                  rotulo="Desconto sem vidraria (copos descartáveis)"
+                  nome="desconto_sem_vidraria"
+                  erro={e.desconto_sem_vidraria}
+                  ajuda="Quanto o preço cai quando o cliente dispensa a vidraria. É uma das opções que a Cecília oferece para baixar o valor."
+                >
+                  {(p) => <EntradaMoeda {...p} defaultValue={valorCampo(calc?.desconto_sem_vidraria ?? 0)} placeholder="0,00" />}
+                </Campo>
               </div>
             </fieldset>
             {gestor && (
@@ -202,6 +211,10 @@ export function TelaCalculadora({
             <label className="flex min-h-11 items-center gap-3 self-end text-sm">
               <input type="checkbox" checked={sim.outra_cidade} onChange={(ev) => setSim((s) => ({ ...s, outra_cidade: ev.target.checked }))} className="size-5 accent-[var(--marca)]" />
               Evento em outra cidade
+            </label>
+            <label className="flex min-h-11 items-center gap-3 self-end text-sm">
+              <input type="checkbox" checked={sim.sem_vidraria} onChange={(ev) => setSim((s) => ({ ...s, sem_vidraria: ev.target.checked }))} className="size-5 accent-[var(--marca)]" />
+              Sem vidraria (copos descartáveis)
             </label>
           </div>
           <Botao variante="secundario" className="mt-4 w-full" carregando={simulando} disabled={!sim.pacote_id} onClick={simular}>

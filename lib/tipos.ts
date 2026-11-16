@@ -63,6 +63,7 @@ export type ConfiguracoesRow = {
   proposta_fotos: Record<string, string>;
   retencao_leads_meses: number;
   email_privacidade: string | null;
+  whatsapp_atendimento: string | null;
   retencao_automatica: boolean;
   created_at: string;
   updated_at: string;
@@ -345,6 +346,8 @@ export type PropostaRow = {
   foro: string | null;
   calculo: ResultadoCalculo | null;
   preco_pendente: boolean;
+  /** Copos descartáveis no lugar da vidraria (com desconto). */
+  sem_vidraria: boolean;
   nota_interna: string | null;
   submetida_por: string | null;
   ajustes_comentario: string | null;
@@ -539,6 +542,7 @@ export type CalculadoraRow = {
   margem_pct: number | null;
   arredondar_para: number;
   preco_minimo: number;
+  desconto_sem_vidraria: number;
   aprovada: boolean;
   aprovada_em: string | null;
   aprovada_por: string | null;
@@ -551,7 +555,7 @@ export type ResultadoCalculo = {
   ok: boolean;
   aprovada: boolean;
   pendencias: string[];
-  entrada?: { pacote_id: string | null; pacote: string | null; convidados: number; duracao_horas: number; linha: LinhaBebida; outra_cidade: boolean };
+  entrada?: { pacote_id: string | null; pacote: string | null; convidados: number; duracao_horas: number; linha: LinhaBebida; outra_cidade: boolean; sem_vidraria?: boolean };
   total_drinks?: number;
   drinks?: { id: string; nome: string; quantidade: number }[];
   insumos?: {
@@ -578,6 +582,7 @@ export type ResultadoCalculo = {
     total: number;
     margem_pct: number;
     acrescimo_pacote_pct?: number;
+    desconto_sem_vidraria?: number;
   };
   preco_sugerido?: number;
   calculado_em?: string;

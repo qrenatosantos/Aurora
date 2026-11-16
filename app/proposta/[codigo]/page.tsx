@@ -19,7 +19,7 @@ import { BotaoImprimir, FormAceite } from "./botoes";
 export const metadata: Metadata = { title: "Proposta", robots: { index: false, follow: false } };
 
 type Publico = {
-  proposta: PropostaAurora;
+  proposta: PropostaAurora & { pedido?: string | null };
   itens: ItemAurora[];
   cliente: { contato?: string | null; empresa?: string | null } | null;
   empresa: EmpresaAurora & { whatsapp?: string | null };
@@ -38,6 +38,7 @@ export default async function PropostaPublica({ params }: { params: Promise<{ co
   const whats = empresa.whatsapp;
   const nomeCliente = cliente?.contato ?? cliente?.empresa ?? null;
   const aberta = p.status === "enviada";
+  const ref = `${p.numero}${p.pedido ? ` (pedido ${p.pedido})` : ""}`;
 
   return (
     <main className="min-h-dvh bg-fundo px-3 py-5 sm:px-6 print:p-0">
@@ -66,6 +67,16 @@ export default async function PropostaPublica({ params }: { params: Promise<{ co
                 <span>
                   <strong>Proposta aceita</strong> em {formatarDataHora(p.aceita_em)}
                   {p.aceite_nome ? ` por ${p.aceite_nome}` : ""}. Obrigado! A Aurora vai entrar em contato com os próximos passos.
+                  {whats && (
+                    <a
+                      href={linkWhatsApp(whats, `Olá, Aurora! Acabei de aceitar a proposta ${ref}. Quais são os próximos passos?`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 flex min-h-11 w-fit items-center gap-2 rounded-xl bg-whats px-4 text-sm font-semibold text-white hover:opacity-90"
+                    >
+                      <MessageCircle className="size-4" aria-hidden /> Avisar a Aurora pelo WhatsApp
+                    </a>
+                  )}
                 </span>
               </p>
             ) : p.status === "substituida" ? (
@@ -104,12 +115,12 @@ export default async function PropostaPublica({ params }: { params: Promise<{ co
             <BotaoImprimir />
             {whats && (
               <a
-                href={linkWhatsApp(whats, `Olá, Aurora! Tenho uma dúvida sobre a proposta ${p.numero}.`)}
+                href={linkWhatsApp(whats, `Olá, Aurora! Quero conversar sobre a proposta ${ref}.`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-whats px-4 text-sm font-semibold text-white hover:opacity-90"
               >
-                <MessageCircle className="size-4" aria-hidden /> Falar com a Aurora
+                <MessageCircle className="size-4" aria-hidden /> Quero conversar sobre a proposta
               </a>
             )}
           </div>

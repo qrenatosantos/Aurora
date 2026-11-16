@@ -1,5 +1,5 @@
 /**
- * TEXTOS FIXOS DA PROPOSTA (páginas "Objeto do contrato", "Compromissos", "Responsabilidades"...).
+ * TEXTOS FIXOS DA PROPOSTA (páginas "Objeto da proposta", "Compromissos", "Responsabilidades"...).
  * Os padrões abaixo vêm da proposta-modelo da Aurora. O gestor pode trocá-los em
  * Configurações ▸ Propostas e agenda (ficam em configuracoes.proposta_textos).
  *
@@ -40,9 +40,9 @@ export const CAMPOS_TEXTO: { chave: ChaveTexto; rotulo: string; linhas: number; 
   { chave: "capa_titulo", rotulo: "Capa: título padrão", linhas: 1, ajuda: "Pode ser trocado em cada proposta (ex.: “Um brinde ao primeiro ano do José Miguel.”)." },
   { chave: "capa_subtitulo", rotulo: "Capa: frase de apoio", linhas: 1 },
   { chave: "frase_apresentacao", rotulo: "Apresentação: frase da Aurora", linhas: 1 },
-  { chave: "objeto", rotulo: "Objeto do contrato", linhas: 4, ajuda: "Uma linha por item, no formato “Título: texto”. A validade da proposta entra sozinha no fim." },
+  { chave: "objeto", rotulo: "Objeto da proposta", linhas: 4, ajuda: "Uma linha por item, no formato “Título: texto”. A validade da proposta entra sozinha no fim." },
   { chave: "compromissos", rotulo: "Compromissos da Aurora", linhas: 4, ajuda: "Uma linha por compromisso, no formato “Título: texto”." },
-  { chave: "responsabilidades", rotulo: "Responsabilidades do contratante", linhas: 5, ajuda: "Uma linha por item." },
+  { chave: "responsabilidades", rotulo: "Responsabilidades do cliente", linhas: 5, ajuda: "Uma linha por item." },
   { chave: "disposicoes", rotulo: "Disposições gerais", linhas: 3, ajuda: "Uma linha por item. O foro entra sozinho, se preenchido." },
   { chave: "mensagem_final", rotulo: "Página final: mensagem de agradecimento", linhas: 2 },
 ];

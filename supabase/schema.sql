@@ -2299,6 +2299,12 @@ alter table public.configuracoes add column if not exists proposta_fotos   jsonb
 -- LGPD
 alter table public.configuracoes add column if not exists retencao_leads_meses integer not null default 12;
 alter table public.configuracoes add column if not exists email_privacidade    text;
+-- WhatsApp que recebe as mensagens dos clientes pelos botões da proposta (ex.: o número da Cecília).
+-- Vazio = o WhatsApp da empresa.
+alter table public.configuracoes add column if not exists whatsapp_atendimento text;
+alter table public.configuracoes drop constraint if exists configuracoes_whatsapp_atendimento_ck;
+alter table public.configuracoes add constraint configuracoes_whatsapp_atendimento_ck
+  check (whatsapp_atendimento is null or whatsapp_atendimento ~ '^[0-9]{10,13}$');
 -- true = o banco apaga sozinho, toda semana, os leads fora do prazo de guarda (LGPD)
 alter table public.configuracoes add column if not exists retencao_automatica  boolean not null default true;
 
@@ -2695,6 +2701,11 @@ begin
   end loop;
 end $$;
 
+-- Desconto quando o cliente dispensa a vidraria (serviço com copos descartáveis).
+alter table public.calculadora add column if not exists desconto_sem_vidraria numeric(12,2) not null default 0;
+alter table public.calculadora drop constraint if exists calculadora_desconto_sem_vidraria_ck;
+alter table public.calculadora add constraint calculadora_desconto_sem_vidraria_ck check (desconto_sem_vidraria >= 0);
+
 -- Na própria calculadora: mudar um parâmetro desfaz a aprovação; aprovar só pela função aprovar_calculadora().
 -- SEM "security definer": current_user = quem chamou ('authenticated' = app).
 create or replace function public.calculadora_antes()
@@ -2704,10 +2715,12 @@ set search_path = public
 as $$
 begin
   if (new.drinks_por_convidado_hora, new.convidados_por_bartender, new.minimo_bartenders, new.custo_bartender_hora,
-      new.horas_montagem, new.custo_fixo, new.taxa_outra_cidade, new.perdas_pct, new.margem_pct, new.arredondar_para, new.preco_minimo)
+      new.horas_montagem, new.custo_fixo, new.taxa_outra_cidade, new.perdas_pct, new.margem_pct, new.arredondar_para, new.preco_minimo,
+      new.desconto_sem_vidraria)
      is distinct from
      (old.drinks_por_convidado_hora, old.convidados_por_bartender, old.minimo_bartenders, old.custo_bartender_hora,
-      old.horas_montagem, old.custo_fixo, old.taxa_outra_cidade, old.perdas_pct, old.margem_pct, old.arredondar_para, old.preco_minimo) then
+      old.horas_montagem, old.custo_fixo, old.taxa_outra_cidade, old.perdas_pct, old.margem_pct, old.arredondar_para, old.preco_minimo,
+      old.desconto_sem_vidraria) then
     new.aprovada := false; new.aprovada_em := null; new.aprovada_por := null;
   elsif current_user in ('authenticated', 'anon') then
     -- pelo app, os campos de aprovação só mudam pela função aprovar_calculadora()
@@ -2792,11 +2805,14 @@ declare
   v_c_mao      numeric;
   v_c_total    numeric;
   v_preco      numeric;
+  v_sem_vidro  boolean := false;
+  v_desc_vidro numeric := 0;
 begin
   select * into v_c from public.calculadora where unica limit 1;
 
   begin
     v_conv := (p ->> 'convidados')::integer;
+    v_sem_vidro := coalesce((p ->> 'sem_vidraria')::boolean, false);
     v_horas := (p ->> 'duracao_horas')::numeric;
     v_fora := coalesce((p ->> 'outra_cidade')::boolean, false);
   exception when others then
@@ -2880,6 +2896,10 @@ begin
   v_c_mao := round(v_bart * (v_horas + v_c.horas_montagem) * v_c.custo_bartender_hora, 2);
   v_c_total := v_c_insumos + v_c_mao + v_c.custo_fixo + case when v_fora then v_c.taxa_outra_cidade else 0 end;
   v_preco := round(v_c_total * (1 + v_c.margem_pct / 100) * (1 + coalesce(v_pacote.acrescimo_pct, 0) / 100), 2);
+  if v_sem_vidro then -- copos descartáveis no lugar da vidraria
+    v_desc_vidro := least(coalesce(v_c.desconto_sem_vidraria, 0), v_preco);
+    v_preco := v_preco - v_desc_vidro;
+  end if;
   if v_c.arredondar_para > 0 then
     v_preco := ceil(v_preco / v_c.arredondar_para) * v_c.arredondar_para;
   end if;
@@ -2890,7 +2910,7 @@ begin
     'aprovada', v_c.aprovada,
     'pendencias', '[]'::jsonb,
     'entrada', jsonb_build_object('pacote_id', v_pacote.id, 'pacote', v_pacote.nome, 'convidados', v_conv,
-                                  'duracao_horas', v_horas, 'linha', v_linha, 'outra_cidade', v_fora),
+                                  'duracao_horas', v_horas, 'linha', v_linha, 'outra_cidade', v_fora, 'sem_vidraria', v_sem_vidro),
     'total_drinks', v_total_dr,
     'drinks', v_drinks,
     'insumos', v_insumos,
@@ -2898,7 +2918,7 @@ begin
     'custos', jsonb_build_object('insumos', v_c_insumos, 'compra_embalagens_inteiras', v_compra, 'mao_de_obra', v_c_mao,
                                  'fixo', v_c.custo_fixo, 'outra_cidade', case when v_fora then v_c.taxa_outra_cidade else 0 end,
                                  'total', v_c_total, 'margem_pct', v_c.margem_pct,
-                                 'acrescimo_pacote_pct', coalesce(v_pacote.acrescimo_pct, 0)),
+                                 'acrescimo_pacote_pct', coalesce(v_pacote.acrescimo_pct, 0), 'desconto_sem_vidraria', v_desc_vidro),
     'preco_sugerido', v_preco,
     'calculado_em', now());
 end;
@@ -3341,6 +3361,7 @@ alter table public.propostas add column if not exists cancelamento_multa_pct  nu
 alter table public.propostas add column if not exists taxa_quebra             numeric(12,2);
 alter table public.propostas add column if not exists foro                    text;
 alter table public.propostas add column if not exists calculo           jsonb;                 -- memória de cálculo (interna, nunca vai ao cliente)
+alter table public.propostas add column if not exists sem_vidraria      boolean not null default false; -- copos descartáveis (com desconto)
 alter table public.propostas add column if not exists preco_pendente    boolean not null default false; -- o agente não tinha regra de preço: o gestor define
 alter table public.propostas add column if not exists nota_interna      text;                  -- recado de quem montou para quem aprova
 alter table public.propostas add column if not exists submetida_por     uuid references public.vendedores (id) on delete set null;
@@ -3435,12 +3456,12 @@ begin
   v_conteudo := (new.titulo, new.validade, new.condicoes_pagamento, new.prazo_entrega, new.observacoes, new.evento, new.cardapio,
                  new.pacote_nome, new.linha, new.capa_titulo, new.capa_subtitulo, new.capa_foto_url, new.apresentacao,
                  new.descricao_servico, new.mensagem_final, new.foto_final_url, new.entrada_pct, new.entrada_dias_antes,
-                 new.saldo_dias_antes, new.cancelamento_aviso_dias, new.cancelamento_multa_pct, new.taxa_quebra, new.foro)
+                 new.saldo_dias_antes, new.cancelamento_aviso_dias, new.cancelamento_multa_pct, new.taxa_quebra, new.foro, new.sem_vidraria)
                 is distinct from
                 (old.titulo, old.validade, old.condicoes_pagamento, old.prazo_entrega, old.observacoes, old.evento, old.cardapio,
                  old.pacote_nome, old.linha, old.capa_titulo, old.capa_subtitulo, old.capa_foto_url, old.apresentacao,
                  old.descricao_servico, old.mensagem_final, old.foto_final_url, old.entrada_pct, old.entrada_dias_antes,
-                 old.saldo_dias_antes, old.cancelamento_aviso_dias, old.cancelamento_multa_pct, old.taxa_quebra, old.foro);
+                 old.saldo_dias_antes, old.cancelamento_aviso_dias, old.cancelamento_multa_pct, old.taxa_quebra, old.foro, old.sem_vidraria);
 
   if v_app then
     if old.status = 'aceita' then
@@ -3675,6 +3696,14 @@ begin
       update public.negocios
          set status = 'ganho', valor = new.total
        where id = new.negocio_id and (status <> 'ganho' or valor <> new.total);
+      -- próximo passo do gestor: cobrar a entrada (aparece nos lembretes do dia)
+      insert into public.atividades (tipo, titulo, descricao, quando, vendedor_id, negocio_id, contato_id)
+      select 'tarefa', left('Cobrar a entrada: ' || n.titulo, 160),
+             'Proposta ' || new.numero || ' aceita' || coalesce(' por ' || nullif(trim(new.aceite_nome), ''), '') ||
+             '. Valor: R$ ' || replace(replace(replace(to_char(new.total, 'FM999,999,990.00'), ',', 'X'), '.', ','), 'X', '.') ||
+             '. Aguardando pagamento.',
+             now(), n.vendedor_id, n.id, n.contato_id
+        from public.negocios n where n.id = new.negocio_id;
     end if;
 
     v_tipo := case new.status
@@ -3758,7 +3787,7 @@ begin
   if v_ev.convidados is not null and v_ev.duracao_horas is not null and array_length(v_ids, 1) is not null then
     v_calc := privado.calcular_preco(jsonb_build_object(
       'pacote_id', v_pac.id, 'drinks', to_jsonb(v_ids), 'convidados', v_ev.convidados, 'duracao_horas', v_ev.duracao_horas,
-      'linha', coalesce(v_ev.linha, 'tradicional'),
+      'linha', coalesce(v_ev.linha, 'tradicional'), 'sem_vidraria', v_p.sem_vidraria,
       'outra_cidade', v_ev.cidade is not null and v_cfg.cidade is not null
                       and lower(trim(v_ev.cidade)) <> lower(trim(split_part(v_cfg.cidade, '/', 1)))));
     if (v_calc ->> 'ok')::boolean and (p_origem = 'humano' or (v_calc ->> 'aprovada')::boolean) then
@@ -3883,6 +3912,7 @@ begin
          cardapio            = case when jsonb_typeof(p_dados -> 'cardapio') = 'array' then p_dados -> 'cardapio' else cardapio end,
          pacote_nome         = nullif(p_dados ->> 'pacote_nome', ''),
          linha               = coalesce(nullif(p_dados ->> 'linha', ''), linha),
+         sem_vidraria        = case when jsonb_typeof(p_dados -> 'sem_vidraria') = 'boolean' then (p_dados ->> 'sem_vidraria')::boolean else sem_vidraria end,
          capa_titulo         = nullif(p_dados ->> 'capa_titulo', ''),
          capa_subtitulo      = nullif(p_dados ->> 'capa_subtitulo', ''),
          capa_foto_url       = nullif(p_dados ->> 'capa_foto_url', ''),
@@ -3929,7 +3959,7 @@ begin
          evento = case when p_com_evento then v.evento else evento end,
          cardapio = v.cardapio,
          pacote_nome = case when p_com_evento then v.pacote_nome else coalesce(pacote_nome, v.pacote_nome) end,
-         linha = v.linha,
+         linha = v.linha, sem_vidraria = v.sem_vidraria,
          capa_titulo = v.capa_titulo, capa_subtitulo = v.capa_subtitulo,
          capa_foto_url = case when p_com_evento then v.capa_foto_url else capa_foto_url end,
          apresentacao = case when p_com_evento then v.apresentacao else apresentacao end,
@@ -4040,12 +4070,13 @@ begin
   select jsonb_build_object(
     'proposta', jsonb_build_object(
       'numero', v_p.numero, 'versao', v_p.versao, 'titulo', v_p.titulo,
+      'pedido', (select n.codigo from public.negocios n where n.id = v_p.negocio_id),
       'status', case when v_p.status = 'enviada' and v_p.validade < public.hoje_br() then 'expirada' else v_p.status end,
       'validade', v_p.validade, 'emitida_em', coalesce(v_p.enviada_em, v_p.created_at),
       'condicoes_pagamento', v_p.condicoes_pagamento, 'prazo_entrega', v_p.prazo_entrega, 'observacoes', v_p.observacoes,
       'subtotal', v_p.subtotal, 'desconto_total', v_p.desconto_total, 'total', v_p.total,
       'aceita_em', v_p.aceita_em, 'aceite_nome', v_p.aceite_nome,
-      'evento', v_p.evento, 'cardapio', v_p.cardapio, 'pacote_nome', v_p.pacote_nome, 'linha', v_p.linha,
+      'evento', v_p.evento, 'cardapio', v_p.cardapio, 'pacote_nome', v_p.pacote_nome, 'linha', v_p.linha, 'sem_vidraria', v_p.sem_vidraria,
       'capa_titulo', v_p.capa_titulo, 'capa_subtitulo', v_p.capa_subtitulo, 'capa_foto_url', v_p.capa_foto_url,
       'apresentacao', v_p.apresentacao, 'descricao_servico', v_p.descricao_servico,
       'mensagem_final', v_p.mensagem_final, 'foto_final_url', v_p.foto_final_url,
@@ -4066,7 +4097,7 @@ begin
     'vendedor', null,
     'empresa', (
       select jsonb_build_object('nome', coalesce(nullif(trim(c.nome_exibicao), ''), c.nome_negocio), 'documento', c.documento,
-                                'whatsapp', c.whatsapp, 'email', c.email, 'site', c.site, 'endereco', c.endereco,
+                                'whatsapp', coalesce(nullif(c.whatsapp_atendimento, ''), c.whatsapp), 'email', c.email, 'site', c.site, 'endereco', c.endereco,
                                 'cidade', c.cidade, 'uf', c.uf, 'instagram', c.instagram, 'responsavel', c.responsavel,
                                 'rodape', c.rodape_proposta, 'textos', c.proposta_textos, 'fotos', c.proposta_fotos)
         from public.configuracoes c where c.unica limit 1))
@@ -4678,6 +4709,35 @@ as $$
 $$;
 
 -- "nov/2026", "novembro de 2026" ou "2026-11" → 2026-11-01
+-- Título automático do negócio ("Casamento · Ana Paula"): refeito quando o tipo do evento ou o nome
+-- do contato mudam. Títulos escritos à mão (sem esse formato) não são tocados.
+create or replace function privado.titulo_automatico(p_negocio uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.negocios n
+     set titulo = left(privado.rotulo_tipo_evento(e.tipo) || ' · ' || c.nome, 120)
+    from public.contatos c, public.eventos e
+   where n.id = p_negocio and c.id = n.contato_id and e.negocio_id = n.id and n.status = 'aberto'
+     and n.titulo ~ '^(Evento|Casamento|15 anos|Aniversário|Formatura|Evento de empresa) · '
+     and n.titulo is distinct from left(privado.rotulo_tipo_evento(e.tipo) || ' · ' || c.nome, 120);
+$$;
+revoke all on function privado.titulo_automatico(uuid) from public, anon, authenticated;
+
+-- Nome que não identifica ninguém ("Cliente do WhatsApp", "Contato", "Lead"...).
+create or replace function privado.nome_generico(p text)
+returns boolean
+language sql
+immutable
+set search_path = public
+as $$
+  select p is null or char_length(trim(p)) < 2
+      or trim(p) ~* '^(cliente|contato|lead|sem nome|desconhecid|an[oô]nim|visitante|usu[aá]rio|whats)'
+      or p ~* 'whats ?app';
+$$;
+
 create or replace function privado.mes_previsto(p text)
 returns date
 language plpgsql
@@ -5217,7 +5277,7 @@ as $$
     'link', case when p.status in ('enviada', 'aceita')
                  then coalesce(nullif(current_setting('app.base_url', true), ''), '') || '/proposta/' || p.codigo end)
   || case when not p_completa then '{}'::jsonb else jsonb_build_object(
-    'evento', p.evento, 'cardapio', p.cardapio, 'pacote', p.pacote_nome, 'linha', p.linha,
+    'evento', p.evento, 'cardapio', p.cardapio, 'pacote', p.pacote_nome, 'linha', p.linha, 'sem_vidraria', p.sem_vidraria,
     'capa_titulo', p.capa_titulo, 'capa_subtitulo', p.capa_subtitulo, 'apresentacao', p.apresentacao,
     'descricao_servico', p.descricao_servico, 'mensagem_final', p.mensagem_final, 'nota_interna', p.nota_interna,
     'condicoes', jsonb_build_object('entrada_pct', p.entrada_pct, 'entrada_dias_antes', p.entrada_dias_antes,
@@ -5302,6 +5362,7 @@ declare
   v_n       public.negocios%rowtype;
   v_c       public.contatos%rowtype;
   v_p       public.propostas%rowtype;
+  v_faltas  text[];
   v_ev      public.eventos%rowtype;
   v_cfg     public.configuracoes%rowtype;
   v_json    jsonb;
@@ -5389,6 +5450,7 @@ begin
            aceita_retomadas = case when jsonb_typeof(d -> 'aceita_retomadas') = 'boolean' then (d ->> 'aceita_retomadas')::boolean else aceita_retomadas end
      where id = v_c.id
     returning * into v_c;
+    perform privado.titulo_automatico(n.id) from public.negocios n where n.contato_id = v_c.id and n.status = 'aberto';
     return privado.resposta(privado.json_contato(v_c), 'Atualizou o contato ' || v_c.nome || '.', null, v_c.id);
 
   -- ================= NEGÓCIOS =================
@@ -5476,6 +5538,7 @@ begin
   elsif p_acao = 'evento.atualizar' then
     v_n := privado.negocio_do_agente(privado.id_de(d, 'negocio_id'), true);
     v_ev := privado.gravar_evento(v_n.id, case when jsonb_typeof(d -> 'evento') = 'object' then d -> 'evento' else d - 'negocio_id' end);
+    perform privado.titulo_automatico(v_n.id);
     return privado.resposta(jsonb_build_object(
         'evento', privado.json_evento(v_ev),
         'disponibilidade', case when v_ev.data is not null
@@ -5554,6 +5617,7 @@ begin
         'disponivel', true, 'preco', v_calc -> 'preco_sugerido',
         'pacote', v_calc #> '{entrada,pacote}', 'convidados', v_calc #> '{entrada,convidados}',
         'duracao_horas', v_calc #> '{entrada,duracao_horas}', 'linha', v_calc #> '{entrada,linha}',
+        'sem_vidraria', v_calc #> '{entrada,sem_vidraria}', 'desconto_sem_vidraria', v_calc #> '{custos,desconto_sem_vidraria}',
         'bartenders', v_calc -> 'bartenders',
         'drinks', (select jsonb_agg(x ->> 'nome') from jsonb_array_elements(v_calc -> 'drinks') x),
         'orientacao', 'Valor de referência pelas regras aprovadas. A proposta ainda passa pela aprovação do gestor antes de ir ao cliente.'),
@@ -5586,6 +5650,10 @@ begin
        where x ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
     end if;
     v_id := privado.montar_proposta(v_n.id, 'agente', v_ids);
+    if coalesce((d ->> 'sem_vidraria')::boolean, false) then -- copos descartáveis: refaz o preço com o desconto
+      update public.propostas set sem_vidraria = true where id = v_id;
+      perform privado.preencher_proposta(v_id, 'agente', v_ids);
+    end if;
     update public.propostas
        set capa_titulo = coalesce(nullif(left(trim(d ->> 'capa_titulo'), 160), ''), capa_titulo),
            capa_subtitulo = coalesce(nullif(left(trim(d ->> 'capa_subtitulo'), 240), ''), capa_subtitulo),
@@ -5614,6 +5682,10 @@ begin
         raise exception 'Nenhum drink válido em "drinks". Use os ids de catalogo/drinks.' using errcode = 'AU400';
       end if;
     end if;
+    if jsonb_typeof(d -> 'sem_vidraria') = 'boolean' and (d ->> 'sem_vidraria')::boolean is distinct from v_p.sem_vidraria then
+      update public.propostas set sem_vidraria = (d ->> 'sem_vidraria')::boolean where id = v_p.id;
+      d := d || '{"sincronizar": true}'::jsonb; -- o preço muda
+    end if;
     -- cardápio novo ou "sincronizar": refaz dados do evento, cardápio e preço pelas regras aprovadas
     if v_ids is not null or coalesce((d ->> 'sincronizar')::boolean, false) then
       perform privado.preencher_proposta(v_p.id, 'agente', v_ids);
@@ -5637,6 +5709,22 @@ begin
       raise exception 'A proposta está "%": só rascunhos e propostas com ajustes solicitados podem ser submetidas.', v_p.status
         using errcode = 'AU409';
     end if;
+    -- o gestor não recebe proposta incompleta: sem o nome de quem pede, sem horas ou sem convidados
+    select array_remove(array[
+             case when privado.nome_generico((select c.nome from public.contatos c where c.id = v_n.contato_id))
+                  then 'o nome do cliente (grave com PATCH /contatos/:id)' end,
+             case when nullif(v_p.evento ->> 'duracao_horas', '') is null
+                  then 'a duração do serviço em horas (PUT /negocios/:id/evento)' end,
+             case when nullif(v_p.evento ->> 'convidados', '') is null
+                  then 'o número de convidados (PUT /negocios/:id/evento)' end,
+             case when nullif(v_p.evento ->> 'data', '') is null and nullif(v_p.evento ->> 'mes_previsto', '') is null
+                  then 'a data ou o mês previsto (PUT /negocios/:id/evento)' end], null)
+      into v_faltas;
+    if coalesce(array_length(v_faltas, 1), 0) > 0 then
+      raise exception 'Antes de submeter, pergunte ao cliente e grave: %. Depois atualize a proposta com PATCH /propostas/:id {"sincronizar": true} e submeta de novo.',
+        array_to_string(v_faltas, '; ');
+    end if;
+    perform privado.titulo_automatico(v_n.id);
     update public.propostas
        set status = 'aguardando_aprovacao', aprovacao_pedida_em = now(), submetida_por = v_agente,
            nota_interna = case when d ? 'nota' then nullif(left(trim(d ->> 'nota'), 1000), '') else nota_interna end

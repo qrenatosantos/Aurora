@@ -64,7 +64,7 @@ const quando = new Date(Date.now() + 75 * 864e5).toISOString().slice(0, 10);
 const criado = exigir(
   await api("POST", "/negocios", {
     titulo: "TESTE DO AGENTE (pode excluir)",
-    contato: { nome: "Cliente de Teste do Agente", telefone: "34900000001" },
+    contato: { nome: "Marina Teste (agente de teste)", telefone: "34900000001" },
     evento: { tipo: "aniversario", nome: "Festa de teste", data: quando, hora_inicio: "19:00", duracao_horas: 4, cidade: cond.empresa.cidade ?? "Araxá", convidados: 80, pacote: pacote.nome },
     origem: "WhatsApp",
     observacoes: "Criado pelo roteiro scripts/agente-de-teste.mjs.",

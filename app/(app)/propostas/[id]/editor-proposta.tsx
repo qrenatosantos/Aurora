@@ -60,6 +60,7 @@ export function EditorProposta({ proposta, itens, drinks, gestor }: { proposta: 
     nota_interna: proposta.nota_interna ?? "",
     pacote_nome: proposta.pacote_nome ?? "",
     linha: proposta.linha ?? "tradicional",
+    sem_vidraria: proposta.sem_vidraria ? "sim" : "",
     entrada_pct: txt(proposta.entrada_pct),
     entrada_dias_antes: txt(proposta.entrada_dias_antes),
     saldo_dias_antes: txt(proposta.saldo_dias_antes),
@@ -117,6 +118,7 @@ export function EditorProposta({ proposta, itens, drinks, gestor }: { proposta: 
         linha: c.linha === "premium" ? "premium" : "tradicional",
         cidade: c.ev_cidade,
         pacote_nome: c.pacote_nome,
+        sem_vidraria: c.sem_vidraria === "sim",
       });
       if (r.ok && r.calculo) setCalculo(r.calculo);
       else toast.erro(r.mensagem ?? "Não foi possível calcular.");
@@ -149,6 +151,7 @@ export function EditorProposta({ proposta, itens, drinks, gestor }: { proposta: 
         nota_interna: c.nota_interna,
         pacote_nome: c.pacote_nome,
         linha: c.linha === "premium" ? "premium" : "tradicional",
+        sem_vidraria: c.sem_vidraria === "sim",
         entrada_pct: numOuNulo(c.entrada_pct),
         entrada_dias_antes: numOuNulo(c.entrada_dias_antes),
         saldo_dias_antes: numOuNulo(c.saldo_dias_antes),
@@ -309,6 +312,20 @@ export function EditorProposta({ proposta, itens, drinks, gestor }: { proposta: 
               ))}
             </Selecao>
           </div>
+          <label className="flex min-h-11 items-center gap-3 self-end text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={c.sem_vidraria === "sim"}
+              onChange={(e) => {
+                setC((a) => ({ ...a, sem_vidraria: e.target.checked ? "sim" : "" }));
+                setMudou(true);
+              }}
+              className="size-5 accent-[var(--marca)]"
+            />
+            <span>
+              Sem vidraria: copos descartáveis <span className="text-texto-2">(desconto da calculadora; recalcule o preço)</span>
+            </span>
+          </label>
         </div>
         {cardapio.length === 0 && <p className="text-sm text-texto-2">Nenhum drink. Adicione do catálogo abaixo.</p>}
         <ul className="space-y-2">

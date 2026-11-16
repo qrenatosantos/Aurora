@@ -107,6 +107,24 @@ select x.nome, x.descricao, x.categoria, x.alcoolico, x.copo, x.foto_url, x.orde
   ) as x(nome, descricao, categoria, alcoolico, copo, foto_url, ordem)
  where not exists (select 1 from public.drinks d where lower(d.nome) = lower(x.nome));
 
+-- copos e fotos padrão dos drinks da casa (só preenche o que estiver vazio)
+update public.drinks d
+   set copo = coalesce(d.copo, v.copo),
+       foto_url = case when d.foto_url is null or (d.nome = 'Moscow Mule sem álcool' and d.foto_url = '/aurora/drinks/moscow-mule.webp') then v.foto else d.foto_url end
+  from (values
+    ('Caipirinha', 'baixo', '/aurora/drinks/caipirinha.webp'),
+    ('Caipiroska', 'baixo', '/aurora/drinks/caipiroska.webp'),
+    ('Gin tônica', 'taca', '/aurora/drinks/gin-tonica.webp'),
+    ('Aperol Spritz', 'taca', '/aurora/drinks/spritz.webp'),
+    ('Moscow Mule', 'caneca', '/aurora/drinks/moscow-mule.webp'),
+    ('Fitzgerald', 'baixo', null),
+    ('Aurora Boreal', 'long_drink', '/aurora/drinks/aurora-boreal.webp'),
+    ('Estrela do Norte', 'long_drink', '/aurora/drinks/estrela-do-norte.webp'),
+    ('Moscow Mule sem álcool', 'caneca', '/aurora/drinks/moscow-mule-sem-alcool.webp'),
+    ('Coquetel sem álcool', 'long_drink', '/aurora/drinks/coquetel-sem-alcool.webp')
+  ) as v(nome, copo, foto)
+ where d.nome = v.nome;
+
 -- Pacotes do site -----------------------------------------------------------------------------
 insert into public.pacotes (nome, slogan, ordem)
 select x.nome, x.slogan, x.ordem

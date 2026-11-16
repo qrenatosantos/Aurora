@@ -334,6 +334,25 @@ body.arrastando * {
 .pa-capa-foto { min-height: 14rem; position: relative; }
 .pa-so-largo { display: none; }
 .pa-quadro-foto { position: relative; overflow: hidden; border-radius: 0.9em; min-height: 0; }
+/* aviso "gire o celular": só no celular em pé */
+.pa-girar { display: none; }
+@media (max-width: 639px) {
+  .pa-foto-celular { min-height: 13rem; }
+  .pa-capa-foto { min-height: 16rem; }
+  .pa-in h1.pa-titulo { font-size: 2.6rem !important; }
+  .pa-in h2.pa-titulo { font-size: 2.1rem !important; overflow-wrap: anywhere; }
+}
+@media (max-width: 639px) and (orientation: portrait) {
+  .pa-girar {
+    display: flex; align-items: center; gap: 0.6em; margin-bottom: 1.4em; padding: 0.6em 0.9em;
+    border: 1px solid var(--pa-linha); border-radius: 0.7em; background: rgba(198, 168, 106, 0.08);
+    font-size: 0.8rem; line-height: 1.35; color: var(--pa-creme);
+  }
+  .pa-girar svg { flex-shrink: 0; color: var(--pa-ouro); }
+  .pa-girar-cel { transform-origin: 12px 12px; animation: pa-girar 2.6s ease-in-out infinite; }
+}
+@keyframes pa-girar { 0%, 35% { transform: rotate(0deg); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+@media (prefers-reduced-motion: reduce) { .pa-girar-cel { animation: none; } }
 .pa-quadro-foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 @media (min-width: 640px) {

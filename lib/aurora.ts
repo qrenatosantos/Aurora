@@ -41,12 +41,42 @@ export const CATEGORIAS_DRINK: { id: CategoriaDrink; nome: string }[] = [
 export const nomeCategoriaDrink = (c: string) => CATEGORIAS_DRINK.find((x) => x.id === c)?.nome ?? c;
 
 export const COPOS: { id: Copo; nome: string; descricao: string }[] = [
-  { id: "long_drink", nome: "Copo long drink", descricao: "Copo alto para drinks e bebidas refrescantes." },
-  { id: "baixo", nome: "Copo baixo", descricao: "Copo baixo para caipirinha e caipiroska." },
-  { id: "caneca", nome: "Caneca Moscow Mule", descricao: "Caneca com alça para o Moscow Mule." },
-  { id: "taca", nome: "Taça", descricao: "Taça para drinks servidos sem gelo ou com espumante." },
+  { id: "baixo", nome: "Copo baixo", descricao: "Caipirinha, caipiroska e drinks com gelo." },
+  { id: "long_drink", nome: "Copo long drink", descricao: "Água, refrigerantes e drinks sem álcool." },
+  { id: "taca", nome: "Taça de gin", descricao: "Taça bojuda para gin tônica e spritz." },
+  { id: "caneca", nome: "Caneca Moscow Mule", descricao: "A clássica caneca de cobre do Moscow Mule." },
   { id: "outro", nome: "Outro", descricao: "" },
 ];
+
+const semAcento = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+/** Copo de cada drink quando o cadastro não diz (propostas antigas e drinks novos). */
+export function copoDoDrink(d: { nome: string; copo?: Copo | null }): Copo {
+  if (d.copo && d.copo !== "outro") return d.copo;
+  const n = semAcento(d.nome);
+  if (n.includes("mule")) return "caneca";
+  if (n.includes("gin") || n.includes("spritz") || n.includes("aperol") || n.includes("margarita") || n.includes("cosmopolitan")) return "taca";
+  if (n.includes("caipi") || n.includes("negroni") || n.includes("sour") || n.includes("fitzgerald")) return "baixo";
+  return "long_drink";
+}
+
+/** Fotos da Aurora para os drinks da casa (usadas quando o drink da proposta não traz foto). */
+const FOTOS_DRINK: [string, string][] = [
+  ["moscow mule sem alcool", "/aurora/drinks/moscow-mule-sem-alcool.webp"],
+  ["coquetel sem alcool", "/aurora/drinks/coquetel-sem-alcool.webp"],
+  ["caipirinha", "/aurora/drinks/caipirinha.webp"],
+  ["caipiroska", "/aurora/drinks/caipiroska.webp"],
+  ["gin tonica", "/aurora/drinks/gin-tonica.webp"],
+  ["spritz", "/aurora/drinks/spritz.webp"],
+  ["moscow mule", "/aurora/drinks/moscow-mule.webp"],
+  ["aurora boreal", "/aurora/drinks/aurora-boreal.webp"],
+  ["estrela do norte", "/aurora/drinks/estrela-do-norte.webp"],
+];
+export function fotoDoDrink(d: { nome: string; foto_url?: string | null }): string | null {
+  if (d.foto_url) return d.foto_url;
+  const n = semAcento(d.nome);
+  return FOTOS_DRINK.find(([chave]) => n.includes(chave))?.[1] ?? null;
+}
 
 export const CATEGORIAS_INSUMO: { id: CategoriaInsumo; nome: string }[] = [
   { id: "destilado", nome: "Destilado" },
