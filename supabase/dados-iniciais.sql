@@ -195,3 +195,17 @@ update public.etapas e set marco = v.m
                ('aguardando aprovação', 'aprovacao'), ('proposta enviada', 'enviada'), ('negociação', 'negociacao')) as v(n, m)
  where e.marco is null and lower(e.nome) = v.n
    and not exists (select 1 from public.etapas x where x.funil_id = e.funil_id and x.marco = v.m);
+
+
+-- descrição de todos os drinks (só onde está vazia): toda proposta mostra uma frase de cada drink
+update public.drinks d set descricao = v.descr
+  from (values
+    ('Fitzgerald', 'Cítrico e elegante, com limão-siciliano, um toque de açúcar e gotas de angostura.'),
+    ('Mojito Virgin', 'Hortelã fresca, limão, açúcar e água com gás, sem álcool.'),
+    ('Piña Colada sem álcool', 'Abacaxi e leite de coco batidos com gelo, cremoso e tropical.'),
+    ('Negroni', 'Clássico italiano de gin, vermute rosso e Campari, com casca de laranja.'),
+    ('Cosmopolitan', 'Vodka, licor de laranja, cranberry e limão, servido na taça.'),
+    ('Margarita', 'Tequila, licor de laranja e limão, com borda de sal.'),
+    ('Whisky Sour', 'Whisky, limão e açúcar, com espuma suave e gotas de angostura.')
+  ) as v(nome, descr)
+ where d.nome = v.nome and (d.descricao is null or trim(d.descricao) = '');

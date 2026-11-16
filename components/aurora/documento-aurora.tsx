@@ -10,7 +10,7 @@
  * Página que não tem conteúdo (ex.: nenhum drink com copo definido, nenhuma condição
  * de cancelamento) simplesmente não aparece: o documento nunca mostra dado inventado.
  */
-import { COPOS, copoDoDrink, dataPorExtenso, fotoDoDrink, diaDaSemana, entradaESaldo, horasTexto, mesPorExtenso, nomeTipoEvento } from "@/lib/aurora";
+import { COPOS, copoDoDrink, dataPorExtenso, descricaoDoDrink, fotoDoDrink, diaDaSemana, entradaESaldo, horasTexto, mesPorExtenso, nomeTipoEvento } from "@/lib/aurora";
 import { formatarData, formatarDataHora, formatarMoeda } from "@/lib/formatar";
 import { itensComTitulo, linhasDe, textoProposta } from "@/lib/proposta-textos";
 import type { Copo, DrinkCardapio, EventoProposta } from "@/lib/tipos";
@@ -319,6 +319,7 @@ export function DocumentoAurora({
           <ul className={colunasCardapio} style={{ listStyle: "none", margin: 0, padding: 0, gap: compacto ? "0.6em" : undefined }}>
             {cardapio.map((d, i) => {
               const fotoDrink = fotoDoDrink(d);
+              const descricao = descricaoDoDrink(d);
               return (
                 <li key={i} className="pa-cartao pa-cartao-drink" style={{ display: "grid", gridTemplateColumns: compacto ? "1fr" : "8em minmax(0, 1fr)", gap: "1.2em", alignItems: "center", padding: compacto ? "0.7em 1.1em" : "0.8em", minHeight: compacto ? undefined : "6em" }}>
                   {!compacto &&
@@ -334,10 +335,10 @@ export function DocumentoAurora({
                     <p className="pa-titulo pa-ouro" style={{ fontSize: compacto ? "1.15em" : "1.35em", letterSpacing: "0.05em", textTransform: "uppercase" }}>
                       {d.nome}
                     </p>
-                    {d.descricao && (
+                    {descricao && (
                       <>
                         <div className="pa-regua" style={{ margin: "0.6em 0", background: "rgba(247,242,232,0.16)" }} />
-                        <p style={{ fontSize: compacto ? "0.86em" : "0.95em" }}>{d.descricao}</p>
+                        <p style={{ fontSize: compacto ? "0.86em" : "0.95em" }}>{descricao}</p>
                       </>
                     )}
                   </div>

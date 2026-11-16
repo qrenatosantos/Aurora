@@ -73,6 +73,22 @@ const FOTOS_DRINK: [string, string][] = [
   ["aurora boreal", "/aurora/drinks/aurora-boreal.webp"],
   ["estrela do norte", "/aurora/drinks/estrela-do-norte.webp"],
 ];
+/** Frase padrão dos drinks da casa (para propostas que saíram sem a descrição). */
+const DESCRICOES_DRINK: [string, string][] = [
+  ["fitzgerald", "Cítrico e elegante, com limão-siciliano, um toque de açúcar e gotas de angostura."],
+  ["mojito virgin", "Hortelã fresca, limão, açúcar e água com gás, sem álcool."],
+  ["piña colada sem álcool", "Abacaxi e leite de coco batidos com gelo, cremoso e tropical."],
+  ["negroni", "Clássico italiano de gin, vermute rosso e Campari, com casca de laranja."],
+  ["cosmopolitan", "Vodka, licor de laranja, cranberry e limão, servido na taça."],
+  ["margarita", "Tequila, licor de laranja e limão, com borda de sal."],
+  ["whisky sour", "Whisky, limão e açúcar, com espuma suave e gotas de angostura."],
+];
+export function descricaoDoDrink(d: { nome: string; descricao?: string | null }): string | null {
+  if (d.descricao && d.descricao.trim()) return d.descricao;
+  const n = d.nome.trim().toLowerCase();
+  return DESCRICOES_DRINK.find(([nome]) => nome === n)?.[1] ?? null;
+}
+
 export function fotoDoDrink(d: { nome: string; foto_url?: string | null }): string | null {
   if (d.foto_url) return d.foto_url;
   const n = semAcento(d.nome);

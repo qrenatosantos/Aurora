@@ -86,7 +86,7 @@ export async function excluirInsumo(id: string): Promise<EstadoAcao> {
 const esquemaDrink = z.object({
   id: idOpcional,
   nome: textoObrigatorio(2, 80, "Informe o nome do drink."),
-  descricao: textoOpcional(300),
+  descricao: textoObrigatorio(5, 300, "Escreva uma frase sobre o drink: ela aparece na proposta."),
   categoria: z.enum(["classico", "premium", "sem_alcool", "autoral"]),
   alcoolico: caixa,
   copo: z.enum(["", "long_drink", "baixo", "caneca", "taca", "outro"]).transform((v) => (v === "" ? null : v)),
