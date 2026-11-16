@@ -69,6 +69,7 @@ const FOTOS_DRINK: [string, string][] = [
   ["gin tonica", "/aurora/drinks/gin-tonica.webp"],
   ["spritz", "/aurora/drinks/spritz.webp"],
   ["moscow mule", "/aurora/drinks/moscow-mule.webp"],
+  ["fitzgerald", "/aurora/drinks/fitzgerald.webp"],
   ["aurora boreal", "/aurora/drinks/aurora-boreal.webp"],
   ["estrela do norte", "/aurora/drinks/estrela-do-norte.webp"],
 ];

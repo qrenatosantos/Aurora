@@ -117,7 +117,7 @@ update public.drinks d
     ('Gin tônica', 'taca', '/aurora/drinks/gin-tonica.webp'),
     ('Aperol Spritz', 'taca', '/aurora/drinks/spritz.webp'),
     ('Moscow Mule', 'caneca', '/aurora/drinks/moscow-mule.webp'),
-    ('Fitzgerald', 'baixo', null),
+    ('Fitzgerald', 'baixo', '/aurora/drinks/fitzgerald.webp'),
     ('Aurora Boreal', 'long_drink', '/aurora/drinks/aurora-boreal.webp'),
     ('Estrela do Norte', 'long_drink', '/aurora/drinks/estrela-do-norte.webp'),
     ('Moscow Mule sem álcool', 'caneca', '/aurora/drinks/moscow-mule-sem-alcool.webp'),
