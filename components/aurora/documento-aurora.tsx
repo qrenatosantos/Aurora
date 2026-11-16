@@ -320,7 +320,7 @@ export function DocumentoAurora({
             {cardapio.map((d, i) => {
               const fotoDrink = fotoDoDrink(d);
               return (
-                <li key={i} className="pa-cartao" style={{ display: "grid", gridTemplateColumns: compacto ? "1fr" : "8em 1fr", gap: "1.2em", alignItems: "center", padding: compacto ? "0.7em 1.1em" : "0.8em", minHeight: compacto ? undefined : "6em" }}>
+                <li key={i} className="pa-cartao pa-cartao-drink" style={{ display: "grid", gridTemplateColumns: compacto ? "1fr" : "8em minmax(0, 1fr)", gap: "1.2em", alignItems: "center", padding: compacto ? "0.7em 1.1em" : "0.8em", minHeight: compacto ? undefined : "6em" }}>
                   {!compacto &&
                     (fotoDrink ? (
                       // eslint-disable-next-line @next/next/no-img-element -- foto do drink (qualquer origem)
