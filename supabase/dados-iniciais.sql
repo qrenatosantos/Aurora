@@ -188,3 +188,10 @@ select d.id, i.id, x.quantidade
 
 do $$ begin perform set_config('app.sem_auditoria', '', false); end $$;
 notify pgrst, 'reload schema';
+
+-- funil automático: o que faz o cartão chegar em cada etapa (ver A16 no schema.sql)
+update public.etapas e set marco = v.m
+  from (values ('novo lead', 'novo'), ('em atendimento', 'atendimento'), ('proposta em preparação', 'preparacao'),
+               ('aguardando aprovação', 'aprovacao'), ('proposta enviada', 'enviada'), ('negociação', 'negociacao')) as v(n, m)
+ where e.marco is null and lower(e.nome) = v.n
+   and not exists (select 1 from public.etapas x where x.funil_id = e.funil_id and x.marco = v.m);

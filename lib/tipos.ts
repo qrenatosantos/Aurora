@@ -115,6 +115,8 @@ export type EtapaRow = {
   ordem: number;
   probabilidade: number;
   cor: string;
+  /** Marco do funil automático (o que faz o cartão chegar aqui). */
+  marco?: "novo" | "atendimento" | "preparacao" | "aprovacao" | "enviada" | "negociacao" | null;
   created_at: string;
   updated_at: string;
 };

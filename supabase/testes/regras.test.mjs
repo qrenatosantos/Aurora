@@ -931,3 +931,35 @@ describe("pedidos do agente (C1 a C4)", () => {
     assert.ok(p.dados.pacotes.some((pc) => pc.drinks.some((x) => x.foto_url && x.foto_url.startsWith("https://app.exemplo.com.br/"))));
   });
 });
+
+describe("funil automático", () => {
+  test("o cartão anda sozinho: lead → atendimento → preparação → aprovação → enviada → negociação; só para a frente", async () => {
+    const k = (await gestor((tx) => valor(tx, "select public.criar_chave_api('Funil automático')"))).chave;
+    const etapa = (id) => banco((tx) => valor(tx, "select e.marco from negocios n join etapas e on e.id = n.etapa_id where n.id = $1", [id]));
+    const n = await api(k, "negocios.criar", {
+      contato: { nome: "Bruna Funil", telefone: "34944332211" },
+      evento: { tipo: "casamento", data: amanha(300), hora_inicio: "19:00", duracao_horas: 5, cidade: "Araxá", convidados: 90, pacote: "Essencial" },
+    });
+    const id = n.dados.id;
+    assert.equal(await etapa(id), "novo");
+    await api(k, "mensagens.registrar", { negocio_id: id, mensagens: [{ direcao: "entrada", texto: "Oi!" }] });
+    assert.equal(await etapa(id), "novo", "só a mensagem do cliente não muda a etapa");
+    await api(k, "mensagens.registrar", { negocio_id: id, mensagens: [{ direcao: "saida", texto: "Olá, Bruna!" }] });
+    assert.equal(await etapa(id), "atendimento");
+    const pr = (await api(k, "propostas.criar", { negocio_id: id })).dados.id;
+    assert.equal(await etapa(id), "preparacao");
+    await api(k, "propostas.submeter", { id: pr });
+    assert.equal(await etapa(id), "aprovacao");
+    await gestor((tx) => tx.query("update propostas set status = 'ajustes_solicitados', ajustes_comentario = 'Trocar a capa.' where id = $1", [pr]));
+    assert.equal(await etapa(id), "preparacao", "pedido de ajustes volta para preparação");
+    await api(k, "propostas.submeter", { id: pr });
+    await gestor((tx) => tx.query("update propostas set status = 'aprovada' where id = $1", [pr]));
+    await api(k, "propostas.enviar", { id: pr });
+    assert.equal(await etapa(id), "enviada");
+    await api(k, "mensagens.registrar", { negocio_id: id, mensagens: [{ direcao: "entrada", texto: "Dá para mudar um drink?" }] });
+    assert.equal(await etapa(id), "negociacao");
+    // nada faz o cartão voltar (uma resposta da Aurora agora não o leva para "atendimento")
+    await api(k, "mensagens.registrar", { negocio_id: id, mensagens: [{ direcao: "saida", texto: "Claro!" }] });
+    assert.equal(await etapa(id), "negociacao");
+  });
+});

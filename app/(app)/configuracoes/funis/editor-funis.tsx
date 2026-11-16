@@ -13,7 +13,17 @@ import { useToast } from "@/components/ui/toast";
 import type { FunilComEtapas } from "@/lib/dados";
 import { useAcao } from "@/lib/use-acao";
 
-type EtapaEd = { chave: string; id: string | null; nome: string; probabilidade: string; cor: string };
+type EtapaEd = { chave: string; id: string | null; nome: string; probabilidade: string; cor: string; marco?: string | null };
+
+/** O que faz o cartão chegar em cada etapa (regras no banco: funil automático). */
+const GATILHO: Record<string, string> = {
+  novo: "Entra sozinho: pedido novo (site, WhatsApp ou cadastro).",
+  atendimento: "Anda sozinho: a Aurora responde o cliente ou alguém registra uma interação.",
+  preparacao: "Anda sozinho: proposta criada, ou o gestor pediu ajustes.",
+  aprovacao: "Anda sozinho: proposta enviada para a aprovação do gestor.",
+  enviada: "Anda sozinho: proposta enviada ao cliente.",
+  negociacao: "Anda sozinho: o cliente responde depois do envio, pede nova versão ou recusa.",
+};
 
 export function EditorFunis({ funis, contagem, variosFunis }: { funis: FunilComEtapas[]; contagem: Record<string, number>; variosFunis: boolean }) {
   const router = useRouter();
@@ -52,7 +62,7 @@ function Funil({ funil, contagem }: { funil: FunilComEtapas; contagem: Record<st
   const [nome, setNome] = useState(funil.nome);
   const [ativo, setAtivo] = useState(funil.ativo);
   const [etapas, setEtapas] = useState<EtapaEd[]>(() =>
-    funil.etapas.map((x) => ({ chave: x.id, id: x.id, nome: x.nome, probabilidade: String(x.probabilidade), cor: x.cor })),
+    funil.etapas.map((x) => ({ chave: x.id, id: x.id, nome: x.nome, probabilidade: String(x.probabilidade), cor: x.cor, marco: x.marco ?? null })),
   );
   const [mudou, setMudou] = useState(false);
   const mexer = (f: (l: EtapaEd[]) => EtapaEd[]) => {
@@ -144,6 +154,7 @@ function Funil({ funil, contagem }: { funil: FunilComEtapas; contagem: Record<st
               className="h-11 w-11 cursor-pointer rounded-lg border border-borda bg-superficie p-1"
             />
             {x.id && contagem[x.id] ? <Selo>{contagem[x.id]} em aberto</Selo> : null}
+            {x.marco && GATILHO[x.marco] && <span className="w-full pl-7 text-xs text-texto-2">{GATILHO[x.marco]}</span>}
             <span className="ml-auto flex">
               <Botao variante="fantasma" aria-label="Subir" onClick={() => mover(i, -1)} disabled={i === 0}>
                 <ArrowUp className="size-4" aria-hidden />

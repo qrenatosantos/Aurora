@@ -6249,6 +6249,158 @@ end $$;
 --   FIM DA PARTE DA AURORA
 -- #####################################################################
 
+-- =====================================================================
+-- A16. FUNIL AUTOMÁTICO: o cartão anda sozinho conforme o que acontece
+-- Cada etapa pode ter um "marco". As regras abaixo movem o negócio para a etapa do marco
+-- (só para a frente; a única volta é "ajustes solicitados" → preparação). Mover à mão continua valendo.
+-- =====================================================================
+alter table public.etapas add column if not exists marco text;
+alter table public.etapas drop constraint if exists etapas_marco_ck;
+alter table public.etapas add constraint etapas_marco_ck
+  check (marco is null or marco in ('novo', 'atendimento', 'preparacao', 'aprovacao', 'enviada', 'negociacao'));
+create unique index if not exists etapas_marco_uidx on public.etapas (funil_id, marco) where marco is not null;
+
+-- marcos do funil padrão, pelo nome da etapa (só onde ainda não há)
+update public.etapas e set marco = v.m
+  from (values ('novo lead', 'novo'), ('em atendimento', 'atendimento'), ('proposta em preparação', 'preparacao'),
+               ('aguardando aprovação', 'aprovacao'), ('proposta enviada', 'enviada'), ('negociação', 'negociacao')) as v(n, m)
+ where e.marco is null and lower(e.nome) = v.n
+   and not exists (select 1 from public.etapas x where x.funil_id = e.funil_id and x.marco = v.m);
+
+create or replace function privado.avancar_etapa(p_negocio uuid, p_marco text, p_voltar_de_aprovacao boolean default false)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_n     public.negocios%rowtype;
+  v_atual public.etapas%rowtype;
+  v_alvo  public.etapas%rowtype;
+begin
+  select * into v_n from public.negocios where id = p_negocio;
+  if not found or v_n.status <> 'aberto' then return false; end if;
+  select * into v_alvo from public.etapas where funil_id = v_n.funil_id and marco = p_marco;
+  if not found or v_alvo.id = v_n.etapa_id then return false; end if;
+  select * into v_atual from public.etapas where id = v_n.etapa_id;
+  if v_alvo.ordem < coalesce(v_atual.ordem, 0)
+     and not (p_voltar_de_aprovacao and v_atual.marco = 'aprovacao') then
+    return false; -- não volta
+  end if;
+  update public.negocios set etapa_id = v_alvo.id where id = p_negocio;
+  return true;
+end;
+$$;
+revoke all on function privado.avancar_etapa(uuid, text, boolean) from public, anon, authenticated;
+
+-- propostas
+create or replace function public.funil_por_proposta()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    perform privado.avancar_etapa(new.negocio_id,
+      case when exists (select 1 from public.propostas x where x.negocio_id = new.negocio_id and x.id <> new.id
+                         and x.status in ('enviada', 'substituida', 'recusada'))
+           then 'negociacao' else 'preparacao' end);
+  elsif new.status is distinct from old.status then
+    case new.status
+      when 'aguardando_aprovacao' then perform privado.avancar_etapa(new.negocio_id, 'aprovacao');
+      when 'aprovada' then perform privado.avancar_etapa(new.negocio_id, 'aprovacao');
+      when 'ajustes_solicitados' then perform privado.avancar_etapa(new.negocio_id, 'preparacao', true);
+      when 'enviada' then perform privado.avancar_etapa(new.negocio_id, 'enviada');
+      when 'recusada' then perform privado.avancar_etapa(new.negocio_id, 'negociacao');
+      else null;
+    end case;
+  end if;
+  return null;
+end;
+$$;
+revoke all on function public.funil_por_proposta() from public, anon, authenticated;
+drop trigger if exists trg_propostas_funil on public.propostas;
+create trigger trg_propostas_funil after insert or update of status on public.propostas
+  for each row execute function public.funil_por_proposta();
+
+-- conversa: a Aurora respondeu → em atendimento; cliente fala depois do envio → negociação
+create or replace function public.funil_por_mensagem()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.direcao = 'saida' and new.autor in ('agente', 'humano') then
+    perform privado.avancar_etapa(new.negocio_id, 'atendimento');
+  elsif new.direcao = 'entrada' and exists (select 1 from public.propostas p where p.negocio_id = new.negocio_id
+                                               and p.status = 'enviada' and p.enviada_em < new.enviada_em) then
+    perform privado.avancar_etapa(new.negocio_id, 'negociacao');
+  end if;
+  return null;
+end;
+$$;
+revoke all on function public.funil_por_mensagem() from public, anon, authenticated;
+drop trigger if exists trg_mensagens_funil on public.mensagens;
+create trigger trg_mensagens_funil after insert on public.mensagens
+  for each row execute function public.funil_por_mensagem();
+
+-- interação registrada (ligação, WhatsApp, reunião, e-mail, visita) → em atendimento
+create or replace function public.funil_por_atividade()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.negocio_id is not null and new.concluida and new.tipo <> 'tarefa'
+     and (tg_op = 'INSERT' or not old.concluida) then
+    perform privado.avancar_etapa(new.negocio_id, 'atendimento');
+  end if;
+  return null;
+end;
+$$;
+revoke all on function public.funil_por_atividade() from public, anon, authenticated;
+drop trigger if exists trg_atividades_funil on public.atividades;
+create trigger trg_atividades_funil after insert or update of concluida on public.atividades
+  for each row execute function public.funil_por_atividade();
+
+-- Põe na etapa certa os negócios em aberto que já tinham andado (roda de novo sem problema: só avança).
+create or replace function privado.recalcular_etapa(p_negocio uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_marco text;
+begin
+  select case
+    when exists (select 1 from public.propostas p where p.negocio_id = p_negocio and p.status in ('substituida', 'recusada'))
+      or exists (select 1 from public.propostas p join public.mensagens m on m.negocio_id = p.negocio_id
+                  where p.negocio_id = p_negocio and p.status = 'enviada' and m.direcao = 'entrada' and m.enviada_em > p.enviada_em)
+      then 'negociacao'
+    when exists (select 1 from public.propostas p where p.negocio_id = p_negocio and p.status = 'enviada') then 'enviada'
+    when exists (select 1 from public.propostas p where p.negocio_id = p_negocio and p.status in ('aguardando_aprovacao', 'aprovada')) then 'aprovacao'
+    when exists (select 1 from public.propostas p where p.negocio_id = p_negocio and p.status in ('rascunho', 'ajustes_solicitados')) then 'preparacao'
+    when exists (select 1 from public.mensagens m where m.negocio_id = p_negocio and m.direcao = 'saida' and m.autor in ('agente', 'humano'))
+      or exists (select 1 from public.atividades a where a.negocio_id = p_negocio and a.concluida and a.tipo <> 'tarefa')
+      then 'atendimento'
+  end into v_marco;
+  if v_marco is not null then
+    perform privado.avancar_etapa(p_negocio, v_marco);
+  end if;
+end;
+$$;
+revoke all on function privado.recalcular_etapa(uuid) from public, anon, authenticated;
+do $$
+declare r record;
+begin
+  for r in select id from public.negocios where status = 'aberto' loop
+    perform privado.recalcular_etapa(r.id);
+  end loop;
+end $$;
 
 -- =====================================================================
 -- PERMISSÕES DA API (GRANT)
