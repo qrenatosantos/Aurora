@@ -647,6 +647,29 @@ describe("API do agente", () => {
     assert.equal((await api(chave, "propostas.enviar", { id: proposta })).status, 200, "repetir o envio não dá erro");
   });
 
+  test("C5: nova versão de proposta enviada volta para o gestor e invalida o link antigo", async () => {
+    const antiga = await api(chave, "propostas.obter", { id: proposta });
+    assert.equal(antiga.dados.status, "enviada");
+    const codigoAntigo = antiga.dados.link.split("/").pop();
+    const nv = await api(chave, "propostas.nova_versao", { id: proposta, sem_vidraria: true, nota: "Cliente quer copos descartáveis." });
+    assert.equal(nv.status, 201, JSON.stringify(nv));
+    assert.equal(nv.dados.status, "aguardando_aprovacao");
+    assert.equal(nv.dados.versao, antiga.dados.versao + 1);
+    assert.equal(nv.dados.sem_vidraria, true);
+    assert.equal(nv.dados.cardapio.length, antiga.dados.cardapio.length, "mantém o cardápio");
+    assert.equal(await banco((tx) => valor(tx, "select status from propostas where id = $1", [proposta])), "substituida");
+    const publico = await visitante((tx) => valor(tx, "select public.aceitar_proposta_publica($1, 'Cliente')", [codigoAntigo]));
+    assert.equal(publico.ok, false);
+    assert.match(publico.mensagem, /versão mais nova/);
+    // a versão nova aguardando o gestor não ganha outra versão; a substituída também não
+    assert.equal((await api(chave, "propostas.nova_versao", { id: nv.dados.id })).status, 409);
+    assert.equal((await api(chave, "propostas.nova_versao", { id: proposta })).status, 409);
+    await gestor((tx) => tx.query("update propostas set status = 'aprovada' where id = $1", [nv.dados.id]));
+    const env = await api(chave, "propostas.enviar", { id: nv.dados.id });
+    assert.equal(env.dados.status, "enviada");
+    proposta = nv.dados.id;
+  });
+
   test("conversa: registra sem duplicar e lê em ordem", async () => {
     const msgs = [
       { direcao: "entrada", texto: "Oi, quero um orçamento.", id_externo: "wamid.1", enviada_em: "2026-11-01T10:00:00Z" },

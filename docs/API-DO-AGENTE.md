@@ -121,6 +121,7 @@ cliente chama no WhatsApp
    │        … espera o aviso proposta.aprovada ou proposta.ajustes_solicitados …
    ├─ PATCH /propostas/:id  +  submeter      se o gestor pediu ajustes (comentário em ajustes_comentario)
    ├─ POST /propostas/:id/enviar             só depois de aprovada: devolve o link do cliente
+   ├─ POST /propostas/:id/nova-versao        cliente pediu mudança numa proposta já enviada: nova versão volta ao gestor
    └─ POST /negocios/:id/transferir-humano   a qualquer momento: passa para uma pessoa
 ```
 
@@ -373,6 +374,25 @@ convidados e data ou mês previsto. A mensagem diz o que falta: pergunte ao clie
 
 **`POST /api/v1/propostas/:id/enviar`** · permissão `propostas.enviar`  
 Marca como enviada e devolve o link do cliente. Só funciona para proposta APROVADA.
+
+**`POST /api/v1/propostas/:id/nova-versao`** · permissão `propostas.gravar`  
+Use quando o cliente pede para mudar uma proposta **aprovada, enviada ou recusada** (trocar drinks,
+horas, convidados, tirar a vidraria). O sistema:
+1. cria a versão seguinte (mesmo número, `versao` + 1) com os dados atuais do evento;
+2. marca a anterior como "substituída": **o link antigo deixa de valer** (o cliente vê "existe uma
+   versão mais nova");
+3. refaz cardápio e preço e **submete de novo ao gestor** (`aguardando_aprovacao`).
+
+Mudou horas, data ou convidados? Grave antes com `PUT /negocios/:id/evento`. Depois espere o aviso
+`proposta.aprovada` e envie a versão nova com `POST /propostas/:id/enviar` (o link é outro).
+Recusa (409) para proposta em rascunho ou com ajustes (use `PATCH`), aguardando o gestor, aceita
+(passe para a equipe) ou já substituída. Responde `201` com a proposta nova (use o `id` dela).
+
+| Campo | Como preencher |
+|---|---|
+| `drinks` | lista de ids (padrão: o cardápio da versão anterior) |
+| `sem_vidraria` | true \| false |
+| `nota` | o que o cliente pediu, para o gestor |
 
 
 ### Agenda

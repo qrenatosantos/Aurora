@@ -5162,6 +5162,7 @@ as $$
     when 'propostas.criar' then 'propostas.gravar'
     when 'propostas.atualizar' then 'propostas.gravar'
     when 'propostas.submeter' then 'propostas.gravar'
+    when 'propostas.nova_versao' then 'propostas.gravar'
     when 'propostas.enviar' then 'propostas.enviar'
     when 'mensagens.listar' then 'mensagens.ler'
     when 'mensagens.registrar' then 'mensagens.gravar'
@@ -5768,6 +5769,47 @@ begin
      where id = v_p.id
     returning * into v_p;
     return privado.resposta(privado.json_proposta(v_p), 'Submeteu ' || v_p.numero || ' v' || v_p.versao || ' à aprovação do gestor.', v_n.id, v_p.id);
+
+  elsif p_acao = 'propostas.nova_versao' then
+    -- C5: o cliente pediu mudança numa proposta já aprovada/enviada (ou recusada). Cria a versão
+    -- seguinte (a anterior vira "substituída" e o link antigo deixa de valer), refaz evento,
+    -- cardápio e preço e SUBMETE de novo ao gestor.
+    select * into v_p from public.propostas where id = privado.id_de(d, 'id') for update;
+    if not found then raise exception 'Proposta não encontrada.' using errcode = 'AU404'; end if;
+    v_n := privado.negocio_do_agente(v_p.negocio_id, true);
+    if v_p.status in ('rascunho', 'ajustes_solicitados') then
+      raise exception 'A proposta ainda é editável ("%"): use PATCH /propostas/:id.', v_p.status using errcode = 'AU409';
+    elsif v_p.status = 'aguardando_aprovacao' then
+      raise exception 'A proposta está aguardando o gestor. Espere a resposta antes de pedir outra versão.' using errcode = 'AU409';
+    elsif v_p.status = 'aceita' then
+      raise exception 'O cliente já aceitou esta proposta. Mudanças agora são com a equipe: transfira para um humano.' using errcode = 'AU409';
+    elsif v_p.status = 'substituida' then
+      raise exception 'Esta versão já foi substituída. Use a versão mais nova (GET /negocios/:id/propostas).' using errcode = 'AU409';
+    end if;
+    if jsonb_typeof(d -> 'drinks') = 'array' then
+      select array_agg(x::uuid) into v_ids from jsonb_array_elements_text(d -> 'drinks') x
+       where x ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
+      if v_ids is null then
+        raise exception 'Nenhum drink válido em "drinks". Use os ids de catalogo/drinks.' using errcode = 'AU400';
+      end if;
+    end if;
+    select coalesce(max(versao), 0) + 1 into v_int from public.propostas where numero = v_p.numero;
+    insert into public.propostas (negocio_id, numero, versao, titulo, validade, origem)
+    values (v_p.negocio_id, v_p.numero, v_int, v_p.titulo, greatest(v_p.validade, public.hoje_br()), 'agente')
+    returning id into v_id;
+    perform privado.copiar_conteudo_proposta(v_p.id, v_id, true);
+    update public.propostas set status = 'substituida' where id = v_p.id;
+    if jsonb_typeof(d -> 'sem_vidraria') = 'boolean' then
+      update public.propostas set sem_vidraria = (d ->> 'sem_vidraria')::boolean where id = v_id;
+    end if;
+    -- sem "drinks", mantém o cardápio copiado da versão anterior
+    perform privado.preencher_proposta(v_id, 'agente', v_ids);
+    update public.propostas set nota_interna = nullif(left(trim(d ->> 'nota'), 1000), '') where id = v_id;
+    v_res := privado.agente_executar('propostas.submeter', jsonb_build_object('id', v_id));
+    select * into v_p from public.propostas where id = v_id;
+    return privado.resposta(privado.json_proposta(v_p),
+      'Criou a versão ' || v_p.versao || ' da proposta ' || v_p.numero || ' e submeteu ao gestor (o link anterior deixou de valer).',
+      v_n.id, v_p.id, 201);
 
   elsif p_acao = 'propostas.enviar' then
     select * into v_p from public.propostas where id = privado.id_de(d, 'id') for update;
