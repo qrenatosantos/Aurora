@@ -2306,7 +2306,7 @@ alter table public.configuracoes add column if not exists email_privacidade    t
 alter table public.configuracoes add column if not exists whatsapp_atendimento text;
 alter table public.configuracoes drop constraint if exists configuracoes_whatsapp_atendimento_ck;
 alter table public.configuracoes add constraint configuracoes_whatsapp_atendimento_ck
-  check (whatsapp_atendimento is null or whatsapp_atendimento ~ '^[0-9]{10,13}$');
+  check (whatsapp_atendimento is null or whatsapp_atendimento ~ '^\+?[0-9]{10,15}$'); -- "+" = número de outro país
 -- true = o banco apaga sozinho, toda semana, os leads fora do prazo de guarda (LGPD)
 alter table public.configuracoes add column if not exists retencao_automatica  boolean not null default true;
 

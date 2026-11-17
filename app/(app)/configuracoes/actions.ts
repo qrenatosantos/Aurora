@@ -87,8 +87,9 @@ const esquemaAurora = z.object({
   whatsapp_atendimento: z
     .string()
     .optional()
-    .transform((v) => somenteDigitos(v))
-    .refine((v) => v === "" || (v.length >= 10 && v.length <= 13), "WhatsApp com DDD, ex.: (34) 90000-0000.")
+    // "+" na frente = número de outro país (ex.: +1 555 142-3124); sem "+" = Brasil com DDD
+    .transform((v) => (v?.trim().startsWith("+") && somenteDigitos(v) ? "+" : "") + somenteDigitos(v))
+    .refine((v) => v === "" || /^\+?[0-9]{10,15}$/.test(v), "WhatsApp com DDD, ex.: (34) 90000-0000 (de outro país, comece com +).")
     .transform((v) => (v === "" ? null : v)),
 });
 

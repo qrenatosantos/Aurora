@@ -8,10 +8,11 @@
  */
 import { somenteDigitos } from "./formatar";
 
-/** Normaliza para o formato internacional só com dígitos (acrescenta 55 se faltar). */
+/** Normaliza para o formato internacional só com dígitos (acrescenta 55 se faltar; com "+" na frente, usa como está). */
 export function numeroWhatsApp(telefone: string | null | undefined) {
   const d = somenteDigitos(telefone);
   if (!d) return "";
+  if (telefone?.trim().startsWith("+")) return d; // já é internacional (ex.: +1 555...)
   if (d.length === 10 || d.length === 11) return "55" + d; // DDD + número
   return d;
 }

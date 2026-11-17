@@ -201,7 +201,7 @@ update public.etapas e set marco = v.m
 -- descrição de todos os drinks (só onde está vazia): toda proposta mostra uma frase de cada drink
 update public.drinks d set descricao = v.descr
   from (values
-    ('Fitzgerald', 'Cítrico e elegante, com limão-siciliano, um toque de açúcar e gotas de angostura.'),
+    ('Fitzgerald', 'Gin com limão-siciliano, um toque de açúcar e gotas de angostura. Cítrico e elegante.'),
     ('Mojito Virgin', 'Hortelã fresca, limão, açúcar e água com gás, sem álcool.'),
     ('Piña Colada sem álcool', 'Abacaxi e leite de coco batidos com gelo, cremoso e tropical.'),
     ('Negroni', 'Clássico italiano de gin, vermute rosso e Campari, com casca de laranja.'),
