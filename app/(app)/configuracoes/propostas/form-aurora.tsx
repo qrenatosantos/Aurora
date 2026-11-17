@@ -102,7 +102,7 @@ export function FormAurora({ config }: { config: Configuracoes }) {
             rotulo="WhatsApp que recebe os clientes pela proposta"
             nome="whatsapp_atendimento"
             erro={e.whatsapp_atendimento}
-            ajuda="Número dos botões “Quero conversar sobre a proposta” e “Avisar que aceitei” (ex.: o da Cecília). Vazio = o WhatsApp da empresa."
+            ajuda="Número dos botões “Quero conversar sobre a proposta” e “Avisar que aceitei” (ex.: o da Cecília). Número de outro país: comece com + (ex.: +1 555 142-3124). Vazio = o WhatsApp da empresa."
           >
             {(p) => <Entrada {...p} type="tel" inputMode="tel" defaultValue={config.whatsapp_atendimento ?? ""} placeholder="(34) 90000-0000" />}
           </Campo>
