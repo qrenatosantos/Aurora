@@ -349,7 +349,14 @@ describe("calculadora de insumos e preço", () => {
     assert.equal(Number(comVidro.preco_sugerido) - Number(semVidro.preco_sugerido), 100);
     assert.equal(semVidro.entrada.sem_vidraria, true);
     assert.equal(Number(semVidro.custos.desconto_sem_vidraria), 100);
-    await gestor((tx) => tx.query("update calculadora set arredondar_para = 50"));
+    // preço de tabela: arredonda para cima de 100 em 100 e termina em 90
+    const cru = Number(comVidro.preco_sugerido);
+    await gestor((tx) => tx.query("update calculadora set arredondar_para = 100, preco_terminado_em = 90"));
+    const tabela = await gestor((tx) => valor(tx, "select public.calcular_preco($1::jsonb)", [JSON.stringify({ pacote_id: essencial, convidados: 60, duracao_horas: 4 })]));
+    assert.equal(Number(tabela.preco_sugerido) % 100, 90);
+    assert.ok(Number(tabela.preco_sugerido) >= cru && Number(tabela.preco_sugerido) < cru + 100);
+    await assert.rejects(gestor((tx) => tx.query("update calculadora set preco_terminado_em = 100")), /calculadora_terminado_ck/);
+    await gestor((tx) => tx.query("update calculadora set arredondar_para = 50, preco_terminado_em = 0"));
 
     // Aurora Boreal (autoral) continua sem receita: completa e aprova
     await gestor(async (tx) => {
@@ -601,7 +608,7 @@ describe("API do agente", () => {
     assert.equal(cr.dados.origem, "agente");
     assert.equal(cr.dados.preco_pendente, true);
     assert.equal(Number(cr.dados.total), 0);
-    assert.equal(cr.dados.cardapio.length, 6);
+    assert.equal(cr.dados.cardapio.length, 5);
     assert.equal(cr.dados.link, null);
     assert.equal((await api(chave, "propostas.criar", { negocio_id: negocio })).status, 409, "uma proposta em andamento por negócio");
 
@@ -642,7 +649,7 @@ describe("API do agente", () => {
     const semFitz = lida.dados.cardapio.filter((d) => d.nome !== "Fitzgerald").map((d) => d.drink_id);
     const at = await api(chave, "propostas.atualizar", { id: proposta, drinks: semFitz });
     assert.equal(at.status, 200);
-    assert.equal(at.dados.cardapio.length, 5);
+    assert.equal(at.dados.cardapio.length, 4);
     assert.ok(Number(at.dados.total) > 0, "com as regras aprovadas, o preço vem da calculadora");
     assert.equal(at.dados.preco_pendente, false);
     assert.equal(at.dados.capa_titulo, "Um brinde aos 15 anos da Laura.");

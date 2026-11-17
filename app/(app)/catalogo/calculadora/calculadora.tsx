@@ -145,6 +145,9 @@ export function TelaCalculadora({
                 <Campo rotulo="Arredondar o preço para cima de" nome="arredondar_para" erro={e.arredondar_para} ajuda="Ex.: 50 = de 50 em 50 reais. Zero = não arredonda.">
                   {(p) => <EntradaMoeda {...p} defaultValue={valorCampo(calc?.arredondar_para ?? 0)} placeholder="0,00" />}
                 </Campo>
+                <Campo rotulo="Terminar o preço em" nome="preco_terminado_em" erro={e.preco_terminado_em} ajuda="Ex.: arredondar de 100 e terminar em 90 = R$ 1.390, 2.290... Zero = valor redondo.">
+                  {(p) => <EntradaMoeda {...p} defaultValue={valorCampo(calc?.preco_terminado_em ?? 0)} placeholder="0,00" />}
+                </Campo>
                 <Campo rotulo="Preço mínimo de um evento" nome="preco_minimo" erro={e.preco_minimo}>
                   {(p) => <EntradaMoeda {...p} defaultValue={valorCampo(calc?.preco_minimo ?? 0)} placeholder="0,00" />}
                 </Campo>

@@ -145,8 +145,8 @@ select p.id, d.id, x.ordem
   from (values
     ('Essencial', 'Caipirinha', 1), ('Essencial', 'Caipiroska', 2), ('Essencial', 'Gin tônica', 3),
     ('Signature', 'Caipirinha', 1), ('Signature', 'Caipiroska', 2), ('Signature', 'Gin tônica', 3), ('Signature', 'Aperol Spritz', 4),
-    ('Reserve', 'Caipirinha', 1), ('Reserve', 'Caipiroska', 2), ('Reserve', 'Gin tônica', 3), ('Reserve', 'Aperol Spritz', 4),
-    ('Reserve', 'Moscow Mule', 5), ('Reserve', 'Fitzgerald', 6),
+    ('Reserve', 'Caipirinha', 1), ('Reserve', 'Caipiroska', 2), ('Reserve', 'Aperol Spritz', 3),
+    ('Reserve', 'Moscow Mule', 4), ('Reserve', 'Fitzgerald', 5),
     ('Exclusive', 'Caipirinha', 1), ('Exclusive', 'Caipiroska', 2), ('Exclusive', 'Gin tônica', 3), ('Exclusive', 'Aperol Spritz', 4),
     ('Exclusive', 'Moscow Mule', 5), ('Exclusive', 'Fitzgerald', 6), ('Exclusive', 'Aurora Boreal', 7)
   ) as x(pacote, drink, ordem)

@@ -230,6 +230,7 @@ const esquemaCalculadora = z.object({
   perdas_pct: numero(0, 100, "De 0 a 100."),
   margem_pct: numeroOpcional(0, 1000, "De 0 a 1.000."),
   arredondar_para: precoOpcional.transform((v) => v ?? 0),
+  preco_terminado_em: precoOpcional.transform((v) => v ?? 0),
   preco_minimo: precoOpcional.transform((v) => v ?? 0),
   desconto_sem_vidraria: precoOpcional.transform((v) => v ?? 0),
 });

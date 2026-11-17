@@ -39,55 +39,47 @@ receita real.
 
 ## Calculadora (Catálogo ▸ Calculadora)
 
-| Parâmetro | Valor | Por quê |
-|---|---|---|
-| Drinks por convidado por hora | 0,6 | média do evento todo, contando quem bebe pouco, quem não bebe e crianças (o mercado fala em 4 a 6 doses por pessoa que bebe) |
-| Convidados por bartender | 50 | faixa usual de 40 a 60 |
-| Mínimo de bartenders | 2 | |
-| Custo do bartender por hora | R$ 35 | diária de freelancer por volta de R$ 175 a 250 |
-| Horas de montagem | 1,5 | montar e desmontar o bar |
-| Custo fixo por evento | R$ 150 | transporte, descartáveis, decoração do bar |
-| Taxa para outra cidade | R$ 200 | deslocamento na região |
-| Perdas | 10% | |
-| Margem sobre o custo | 30% | |
-| Arredondar para | R$ 50 | |
-| Preço mínimo | R$ 1.200 | eventos pequenos |
+**Ajustada em 17/11/2026 para bater a tabela de preços atual do André** (serviço de 6 horas, linha
+tradicional, em Araxá). Os 12 valores da tabela saem exatos.
 
-## Acréscimo por pacote (novo campo em Catálogo ▸ Pacotes)
-
-A calculadora divide o consumo entre os drinks do cardápio, e os drinks a mais dos pacotes de cima
-custam menos que o Aperol Spritz. Sem um acréscimo, o Exclusive sairia **mais barato** que o
-Signature. Por isso cada pacote ganhou um "acréscimo (%)" sobre o preço calculado:
-
-| Pacote | Acréscimo |
+| Parâmetro | Valor |
 |---|---|
-| Essencial | 0% |
-| Signature | 10% |
-| Reserve | 20% |
-| Exclusive | 30% |
+| Drinks por convidado por hora | 0,31 |
+| Convidados por bartender | 50 (mínimo de 1 bartender) |
+| Custo do bartender por hora | R$ 35 |
+| Horas de montagem | 1,5 |
+| Custo fixo por evento | R$ 390 |
+| Taxa para outra cidade | R$ 200 |
+| Perdas | 10% |
+| Margem sobre o custo | 20% |
+| Arredondar para | R$ 100, **terminando em 90** (novo campo "Terminar o preço em") |
+| Preço mínimo | R$ 1.200 |
 
-## Como ficam os preços (simulações)
+## Acréscimo por pacote (Catálogo ▸ Pacotes)
 
-| Pacote | 50 convidados, 4 h | 100 convidados, 5 h | 150 convidados, 5 h | 100 convidados, 5 h, linha premium |
-|---|---|---|---|---|
-| Essencial | R$ 1.500 (R$ 30/pessoa) | R$ 2.800 (R$ 28) | R$ 4.100 (R$ 27) | R$ 4.000 (R$ 40) |
-| Signature | R$ 2.000 (R$ 40) | R$ 3.850 (R$ 38,50) | R$ 5.650 (R$ 38) | R$ 5.600 (R$ 56) |
-| Reserve | R$ 2.100 (R$ 42) | R$ 4.050 (R$ 40,50) | R$ 5.950 (R$ 40) | R$ 5.950 (R$ 59,50) |
-| Exclusive | R$ 2.250 (R$ 45) | R$ 4.300 (R$ 43) | R$ 6.350 (R$ 42) | R$ 6.100 (R$ 61) |
+| Pacote | Drinks | Acréscimo |
+|---|---|---|
+| Essencial | Caipirinha, Caipiroska, Gin tônica | 0% |
+| Signature | + Aperol Spritz | 0% |
+| Reserve | Caipirinha, Caipiroska, Aperol Spritz, Moscow Mule, Fitzgerald (sem gin tônica, como na tabela) | 25% |
+| Exclusive | os 7, com o Aurora Boreal sem álcool | 41% |
 
-**Conferência com uma proposta real da Aurora:** 85 convidados, 4 horas, caipirinha, caipiroska e
-dois drinks sem álcool, cobrada a R$ 1.600. Na calculadora, caipirinha + caipiroska + Moscow Mule
-sem álcool para 85 convidados em 4 horas dá **R$ 1.500** (o "Coquetel sem álcool" ainda não tem
-receita, por isso ficou de fora). Está na mesma faixa.
+## Como ficam os preços (6 horas)
 
-Referência de mercado: open bar de drinks de R$ 10 a R$ 50 por pessoa (GetNinjas); um fornecedor
-de São Paulo cobra a partir de R$ 36 por pessoa no pacote intermediário.
+| Pacote | 50 pessoas | 100 pessoas | 150 pessoas |
+|---|---|---|---|
+| Essencial | R$ 1.390 | R$ 2.290 | R$ 3.190 |
+| Signature | R$ 1.590 | R$ 2.690 | R$ 3.790 |
+| Reserve | R$ 1.890 | R$ 3.090 | R$ 4.390 |
+| Exclusive | R$ 2.190 | R$ 3.590 | R$ 5.090 |
+
+Os outros tamanhos (ex.: 80 ou 120 pessoas) e outras durações saem da mesma conta.
 
 ## O que o André deve conferir primeiro
 
 1. **Preços dos destilados e do gelo** com os fornecedores reais. São os que mais pesam.
 2. **Custo do bartender por hora** e **margem**. Definem quanto sobra.
-3. **Drinks por convidado por hora**: 0,6 é conservador. Em casamentos com público que bebe bem,
-   0,8 a 1,0 é mais realista.
+3. **Drinks por convidado por hora** (0,31) e **margem** (20%): foram escolhidos para chegar na tabela;
+   se os custos reais forem maiores, a margem real é menor.
 4. **Receita do Aurora Boreal.**
 5. **Acréscimo de cada pacote.**

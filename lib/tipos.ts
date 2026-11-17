@@ -545,6 +545,7 @@ export type CalculadoraRow = {
   perdas_pct: number;
   margem_pct: number | null;
   arredondar_para: number;
+  preco_terminado_em: number;
   preco_minimo: number;
   desconto_sem_vidraria: number;
   aprovada: boolean;

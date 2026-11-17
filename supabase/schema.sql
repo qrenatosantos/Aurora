@@ -2653,6 +2653,11 @@ create table if not exists public.calculadora (
   updated_at                timestamptz not null default now()
 );
 insert into public.calculadora (unica) values (true) on conflict (unica) do nothing;
+-- Final do preço: com "arredondar para 100" e "terminar em 90", 1.312 vira 1.390 (preço de tabela).
+alter table public.calculadora add column if not exists preco_terminado_em numeric(12,2) not null default 0;
+alter table public.calculadora drop constraint if exists calculadora_terminado_ck;
+alter table public.calculadora add constraint calculadora_terminado_ck
+  check (preco_terminado_em >= 0 and (preco_terminado_em = 0 or preco_terminado_em < arredondar_para));
 
 -- updated_at + RLS dos cadastros do catálogo (leitura: vendedor ativo; escrita: gestor)
 do $$
@@ -2725,11 +2730,11 @@ as $$
 begin
   if (new.drinks_por_convidado_hora, new.convidados_por_bartender, new.minimo_bartenders, new.custo_bartender_hora,
       new.horas_montagem, new.custo_fixo, new.taxa_outra_cidade, new.perdas_pct, new.margem_pct, new.arredondar_para, new.preco_minimo,
-      new.desconto_sem_vidraria)
+      new.desconto_sem_vidraria, new.preco_terminado_em)
      is distinct from
      (old.drinks_por_convidado_hora, old.convidados_por_bartender, old.minimo_bartenders, old.custo_bartender_hora,
       old.horas_montagem, old.custo_fixo, old.taxa_outra_cidade, old.perdas_pct, old.margem_pct, old.arredondar_para, old.preco_minimo,
-      old.desconto_sem_vidraria) then
+      old.desconto_sem_vidraria, old.preco_terminado_em) then
     new.aprovada := false; new.aprovada_em := null; new.aprovada_por := null;
   elsif current_user in ('authenticated', 'anon') then
     -- pelo app, os campos de aprovação só mudam pela função aprovar_calculadora()
@@ -2910,7 +2915,9 @@ begin
     v_preco := v_preco - v_desc_vidro;
   end if;
   if v_c.arredondar_para > 0 then
-    v_preco := ceil(v_preco / v_c.arredondar_para) * v_c.arredondar_para;
+    -- para cima, até o próximo valor que termina em "preco_terminado_em" (0 = múltiplo exato)
+    v_preco := ceil((v_preco - coalesce(v_c.preco_terminado_em, 0)) / v_c.arredondar_para) * v_c.arredondar_para
+               + coalesce(v_c.preco_terminado_em, 0);
   end if;
   v_preco := greatest(v_preco, v_c.preco_minimo);
 
