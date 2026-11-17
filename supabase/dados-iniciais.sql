@@ -23,6 +23,8 @@ update public.configuracoes
        subtitulo    = 'Gestão comercial',
        responsavel  = 'André Procácio',
        duracao_padrao_horas = 6,
+       entrada_pct = 60, entrada_dias_antes = 14, saldo_dias_antes = 1,
+       cancelamento_aviso_dias = 7, cancelamento_multa_pct = 25, taxa_quebra = 25,
        whatsapp     = '34988935223',
        instagram    = '@aurora.bartenders',
        cidade       = 'Araxá',
