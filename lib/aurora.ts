@@ -41,7 +41,7 @@ export const CATEGORIAS_DRINK: { id: CategoriaDrink; nome: string }[] = [
 export const nomeCategoriaDrink = (c: string) => CATEGORIAS_DRINK.find((x) => x.id === c)?.nome ?? c;
 
 export const COPOS: { id: Copo; nome: string; descricao: string }[] = [
-  { id: "baixo", nome: "Copo baixo", descricao: "Caipirinha, caipiroska e drinks com gelo." },
+  { id: "baixo", nome: "Copo baixo", descricao: "Caipirinha, caipivodka e drinks com gelo." },
   { id: "long_drink", nome: "Copo long drink", descricao: "Água, refrigerantes e drinks sem álcool." },
   { id: "taca", nome: "Taça de gin", descricao: "Taça bojuda para gin tônica e spritz." },
   { id: "caneca", nome: "Caneca Moscow Mule", descricao: "A clássica caneca de cobre do Moscow Mule." },
@@ -65,6 +65,7 @@ const FOTOS_DRINK: [string, string][] = [
   ["moscow mule sem alcool", "/aurora/drinks/moscow-mule-sem-alcool.webp"],
   ["coquetel sem alcool", "/aurora/drinks/coquetel-sem-alcool.webp"],
   ["caipirinha", "/aurora/drinks/caipirinha.webp"],
+  ["caipivodka", "/aurora/drinks/caipiroska.webp"],
   ["caipiroska", "/aurora/drinks/caipiroska.webp"],
   ["gin tonica", "/aurora/drinks/gin-tonica.webp"],
   ["spritz", "/aurora/drinks/spritz.webp"],

@@ -59,9 +59,9 @@ tradicional, em Araxá). Os 12 valores da tabela saem exatos.
 
 | Pacote | Drinks | Acréscimo |
 |---|---|---|
-| Essencial | Caipirinha, Caipiroska, Gin tônica | 0% |
+| Essencial | Caipirinha, Caipivodka, Gin tônica | 0% |
 | Signature | + Aperol Spritz | 0% |
-| Reserve | Caipirinha, Caipiroska, Aperol Spritz, Moscow Mule, Fitzgerald (sem gin tônica, como na tabela) | 25% |
+| Reserve | Caipirinha, Caipivodka, Aperol Spritz, Moscow Mule, Fitzgerald (sem gin tônica, como na tabela) | 25% |
 | Exclusive | os 7, com o Aurora Boreal sem álcool | 41% |
 
 ## Como ficam os preços (6 horas)

@@ -92,7 +92,7 @@ insert into public.drinks (nome, descricao, categoria, alcoolico, copo, foto_url
 select x.nome, x.descricao, x.categoria, x.alcoolico, x.copo, x.foto_url, x.ordem
   from (values
     ('Caipirinha', 'Cachaça, frutas selecionadas, açúcar e gelo.', 'classico', true, 'baixo', null, 1),
-    ('Caipiroska', 'Vodka, frutas selecionadas, açúcar e gelo. Destaque para a versão de morango.', 'classico', true, 'baixo', null, 2),
+    ('Caipivodka', 'Vodka, frutas selecionadas, açúcar e gelo. Destaque para a versão de morango.', 'classico', true, 'baixo', null, 2),
     ('Gin tônica', 'Refrescante, com limão-siciliano e ervas.', 'classico', true, null, '/aurora/drinks/gin-tonica.webp', 3),
     ('Aperol Spritz', 'Leve e borbulhante, para abrir a noite.', 'classico', true, null, '/aurora/drinks/spritz.webp', 4),
     ('Moscow Mule', 'Vodka, limão, xarope de gengibre, água gaseificada, gelo e espuma cítrica.', 'classico', true, 'caneca', '/aurora/drinks/moscow-mule.webp', 5),
@@ -116,7 +116,7 @@ update public.drinks d
        foto_url = case when d.foto_url is null or (d.nome = 'Moscow Mule sem álcool' and d.foto_url = '/aurora/drinks/moscow-mule.webp') then v.foto else d.foto_url end
   from (values
     ('Caipirinha', 'baixo', '/aurora/drinks/caipirinha.webp'),
-    ('Caipiroska', 'baixo', '/aurora/drinks/caipiroska.webp'),
+    ('Caipivodka', 'baixo', '/aurora/drinks/caipiroska.webp'),
     ('Gin tônica', 'taca', '/aurora/drinks/gin-tonica.webp'),
     ('Aperol Spritz', 'taca', '/aurora/drinks/spritz.webp'),
     ('Moscow Mule', 'caneca', '/aurora/drinks/moscow-mule.webp'),
@@ -143,12 +143,12 @@ select x.nome, x.slogan, x.ordem
 insert into public.pacote_drinks (pacote_id, drink_id, ordem)
 select p.id, d.id, x.ordem
   from (values
-    ('Essencial', 'Caipirinha', 1), ('Essencial', 'Caipiroska', 2), ('Essencial', 'Gin tônica', 3),
-    ('Signature', 'Caipirinha', 1), ('Signature', 'Caipiroska', 2), ('Signature', 'Gin tônica', 3), ('Signature', 'Aperol Spritz', 4),
-    ('Reserve', 'Caipirinha', 1), ('Reserve', 'Caipiroska', 2), ('Reserve', 'Aperol Spritz', 3),
+    ('Essencial', 'Caipirinha', 1), ('Essencial', 'Caipivodka', 2), ('Essencial', 'Gin tônica', 3),
+    ('Signature', 'Caipirinha', 1), ('Signature', 'Caipivodka', 2), ('Signature', 'Aperol Spritz', 3), ('Signature', 'Gin tônica', 4),
+    ('Reserve', 'Caipirinha', 1), ('Reserve', 'Caipivodka', 2), ('Reserve', 'Aperol Spritz', 3),
     ('Reserve', 'Moscow Mule', 4), ('Reserve', 'Fitzgerald', 5),
-    ('Exclusive', 'Caipirinha', 1), ('Exclusive', 'Caipiroska', 2), ('Exclusive', 'Gin tônica', 3), ('Exclusive', 'Aperol Spritz', 4),
-    ('Exclusive', 'Moscow Mule', 5), ('Exclusive', 'Fitzgerald', 6), ('Exclusive', 'Aurora Boreal', 7)
+    ('Exclusive', 'Caipirinha', 1), ('Exclusive', 'Caipivodka', 2), ('Exclusive', 'Aperol Spritz', 3), ('Exclusive', 'Moscow Mule', 4),
+    ('Exclusive', 'Fitzgerald', 5), ('Exclusive', 'Gin tônica', 6), ('Exclusive', 'Aurora Boreal', 7)
   ) as x(pacote, drink, ordem)
   join public.pacotes p on lower(p.nome) = lower(x.pacote)
   join public.drinks d on lower(d.nome) = lower(x.drink)
@@ -175,7 +175,7 @@ insert into public.drink_insumos (drink_id, insumo_id, quantidade)
 select d.id, i.id, x.quantidade
   from (values
     ('Caipirinha', 'Cachaça', 50), ('Caipirinha', 'Limão-taiti', 1), ('Caipirinha', 'Açúcar', 15), ('Caipirinha', 'Gelo', 200),
-    ('Caipiroska', 'Vodka', 50), ('Caipiroska', 'Limão-taiti', 1), ('Caipiroska', 'Açúcar', 15), ('Caipiroska', 'Gelo', 200),
+    ('Caipivodka', 'Vodka', 50), ('Caipivodka', 'Limão-taiti', 1), ('Caipivodka', 'Açúcar', 15), ('Caipivodka', 'Gelo', 200),
     ('Gin tônica', 'Gin', 50), ('Gin tônica', 'Água tônica', 150), ('Gin tônica', 'Limão-siciliano', 0.25), ('Gin tônica', 'Gelo', 200),
     ('Aperol Spritz', 'Aperol', 60), ('Aperol Spritz', 'Espumante', 90), ('Aperol Spritz', 'Água com gás', 30),
     ('Aperol Spritz', 'Laranja', 0.25), ('Aperol Spritz', 'Gelo', 150),
