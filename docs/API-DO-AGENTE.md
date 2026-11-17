@@ -136,6 +136,10 @@ agenda ("Leads novos do site vão para"). O agente só deve agir nos que vierem 
 regras de preço não forem aprovadas, a API mostra `total: null` e `preco_pendente: true` para o
 agente até o gestor aprovar a proposta: não informe valor ao cliente antes disso.
 
+**Duração do serviço: 6 horas é o padrão.** Não pergunte quantas horas o cliente quer: o serviço da
+Aurora é de 6 horas. Se `duracao_horas` não for enviado, o sistema grava o padrão (Configurações).
+Só mude se o próprio cliente pedir, ou como exceção para baixar o preço (abaixo).
+
 **Quando o cliente acha caro.** Antes de passar para uma pessoa, ofereça, nesta ordem:
 1. **reduzir as horas** de serviço (`PUT /negocios/:id/evento` com nova `duracao_horas` e
    `PATCH /propostas/:id {"sincronizar": true}`);

@@ -35,7 +35,7 @@ export function TelaCalculadora({
   const [aprovando, iniciarAprovacao] = useTransition();
   const [simulando, iniciarSimulacao] = useTransition();
   const [resultado, setResultado] = useState<ResultadoCalculo | null>(null);
-  const [sim, setSim] = useState({ pacote_id: pacotes[0]?.id ?? "", convidados: "100", duracao_horas: "4", linha: "tradicional" as "tradicional" | "premium", outra_cidade: false, sem_vidraria: false });
+  const [sim, setSim] = useState({ pacote_id: pacotes[0]?.id ?? "", convidados: "100", duracao_horas: "6", linha: "tradicional" as "tradicional" | "premium", outra_cidade: false, sem_vidraria: false });
   const { onSubmit, erros: e, pendente } = useAcao(salvarCalculadora, { aoSucesso: () => router.refresh() });
   const completa = pendencias.length === 0;
 

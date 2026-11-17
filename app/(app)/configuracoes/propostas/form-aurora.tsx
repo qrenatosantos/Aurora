@@ -81,7 +81,7 @@ export function FormAurora({ config }: { config: Configuracoes }) {
           <Campo rotulo="Festas no mesmo dia e horário" nome="capacidade_simultanea" erro={e.capacidade_simultanea} ajuda="Acima disso, a data aparece como lotada.">
             {(p) => <Entrada {...p} type="number" inputMode="numeric" min={1} max={50} defaultValue={config.capacidade_simultanea} />}
           </Campo>
-          <Campo rotulo="Duração considerada sem horário de término (h)" nome="duracao_padrao_horas" erro={e.duracao_padrao_horas} ajuda="Só para conferir choque de horário.">
+          <Campo rotulo="Duração padrão do serviço (horas)" nome="duracao_padrao_horas" erro={e.duracao_padrao_horas} ajuda="Usada quando o cliente não informa a duração. Também conta no choque de horário.">
             {(p) => <Entrada {...p} inputMode="decimal" defaultValue={num(config.duracao_padrao_horas)} />}
           </Campo>
           <Campo rotulo="Leads novos do site vão para" nome="atendimento_novos_leads" erro={e.atendimento_novos_leads} ajuda="Deixe em Humano até o agente estar ligado.">

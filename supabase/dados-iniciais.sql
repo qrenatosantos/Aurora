@@ -22,6 +22,7 @@ update public.configuracoes
    set nome_negocio = 'Aurora Bartenders',
        subtitulo    = 'Gestão comercial',
        responsavel  = 'André Procácio',
+       duracao_padrao_horas = 6,
        whatsapp     = '34988935223',
        instagram    = '@aurora.bartenders',
        cidade       = 'Araxá',

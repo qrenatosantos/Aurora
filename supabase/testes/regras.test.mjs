@@ -204,6 +204,17 @@ describe("entrada de leads pelo site", () => {
 
 describe("agenda de eventos", () => {
   const dia = amanha(90);
+  test("evento sem duração recebe o padrão do serviço (Configurações)", async () => {
+    await gestor(async (tx) => {
+      const funil = await um(tx, "select f.id as funil, (select id from etapas where funil_id = f.id order by ordem limit 1) as etapa from funis f limit 1");
+      const id = await valor(tx, "insert into negocios (titulo, funil_id, etapa_id, vendedor_id) values ('Sem duração', $1, $2, public.meu_vendedor_id()) returning id", [funil.funil, funil.etapa]);
+      const padrao = await valor(tx, "select duracao_padrao_horas from configuracoes where unica");
+      assert.equal(Number(await valor(tx, "insert into eventos (negocio_id) values ($1) returning duracao_horas", [id])), Number(padrao));
+      // o cliente pediu menos horas: vale o informado
+      assert.equal(Number(await valor(tx, "update eventos set duracao_horas = 4 where negocio_id = $1 returning duracao_horas", [id])), 4);
+      await tx.query("delete from negocios where id = $1", [id]);
+    });
+  });
   test("capacidade de 3 no mesmo horário, horários que não batem e bloqueio", async () => {
     await gestor(async (tx) => {
       const funil = await um(tx, "select f.id as funil, (select id from etapas where funil_id = f.id order by ordem limit 1) as etapa from funis f limit 1");

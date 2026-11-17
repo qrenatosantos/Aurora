@@ -44,7 +44,7 @@ export const CONFIG_PADRAO: Configuracoes = {
   mod_comissoes: false,
   mod_equipe: false,
   capacidade_simultanea: 3,
-  duracao_padrao_horas: 4,
+  duracao_padrao_horas: 6,
   atendimento_novos_leads: "humano",
   entrada_pct: null,
   entrada_dias_antes: null,

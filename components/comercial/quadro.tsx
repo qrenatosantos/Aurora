@@ -63,7 +63,10 @@ export function Quadro({
   hoje,
   vendedores,
   mostrarVendedor,
+  fechados = [],
 }: {
+  /** Negócios ganhos recentes: coluna final "Negócio fechado" (só leitura; soltar ali = ganho). */
+  fechados?: { id: string; titulo: string; valor: number; fechado_em: string | null; contatoNome: string | null }[];
   etapas: Etapa[];
   negocios: CardFunil[];
   opcoes: OpcoesNegocio;
@@ -462,6 +465,36 @@ export function Quadro({
             </section>
           );
         })}
+        <section
+          data-etapa={GANHO}
+          aria-labelledby="col-fechado"
+          className={cn("min-h-48 snap-start rounded-2xl border-2 p-2.5 transition-colors", alvo === GANHO ? "border-ok bg-ok-suave" : "border-transparent bg-ok-suave/60")}
+        >
+          <header className="flex items-center gap-2 px-1 pt-1 pb-1">
+            <Trophy className="size-4 shrink-0 text-ok" aria-hidden />
+            <h2 id="col-fechado" className="min-w-0 flex-1 truncate text-sm font-bold">
+              Negócio fechado
+            </h2>
+            <span className="rounded-full bg-superficie px-2 py-0.5 text-xs font-extrabold text-texto-2">{fechados.length}</span>
+          </header>
+          <p className="num px-1 pb-2.5 text-xs font-bold text-texto-2">
+            {moedaCurta(fechados.reduce((s, n) => s + Number(n.valor), 0))} · últimos 60 dias
+          </p>
+          <div className="flex min-h-16 flex-col gap-2.5">
+            {fechados.length === 0 && (
+              <p className="rounded-xl border-2 border-dashed border-borda px-2.5 py-4 text-center text-sm text-texto-2">Solte aqui para fechar o negócio</p>
+            )}
+            {fechados.map((n) => (
+              <a key={n.id} href={`/negocios/${n.id}`} className="block rounded-xl border border-borda bg-superficie p-3 text-sm hover:border-ok">
+                <span className="block font-semibold">{n.titulo}</span>
+                <span className="mt-1 flex justify-between gap-2 text-xs text-texto-2">
+                  <span className="truncate">{n.contatoNome ?? ""}</span>
+                  <span className="num font-bold text-ok">{moedaInteira(n.valor)}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
       </div>
 
       {/* Áreas de soltar para fechar o negócio (aparecem durante o arraste) */}

@@ -82,6 +82,28 @@ export default async function PaginaFunil({
     return q.order("created_at").order("id").range(de, ate);
   });
 
+  // Coluna final: negócios fechados (ganhos) nos últimos 60 dias
+  const { data: ganhosRecentes } = await supabase
+    .from("negocios")
+    .select("id, titulo, valor, fechado_em, contato_id")
+    .eq("funil_id", funil.id)
+    .eq("status", "ganho")
+    .gte("fechado_em", `${somarDias(hoje, -60)}T00:00:00-03:00`)
+    .order("fechado_em", { ascending: false })
+    .limit(50);
+  const idsContatosGanhos = (ganhosRecentes ?? []).map((n) => n.contato_id).filter((x): x is string => Boolean(x));
+  const { data: contatosGanhos } = idsContatosGanhos.length
+    ? await supabase.from("contatos").select("id, nome").in("id", idsContatosGanhos)
+    : { data: [] as { id: string; nome: string }[] };
+  const nomeContatoGanho = new Map((contatosGanhos ?? []).map((c) => [c.id, c.nome]));
+  const fechados = (ganhosRecentes ?? []).map((n) => ({
+    id: n.id,
+    titulo: n.titulo,
+    valor: Number(n.valor),
+    fechado_em: n.fechado_em,
+    contatoNome: n.contato_id ? (nomeContatoGanho.get(n.contato_id) ?? null) : null,
+  }));
+
   // Próxima atividade (pendente) de cada negócio + nomes dos clientes
   const ids = new Set(negocios.map((n) => n.id));
   const [pendentes, nomes] = await Promise.all([
@@ -151,6 +173,7 @@ export default async function PaginaFunil({
         hoje={hoje}
         vendedores={vendedores}
         mostrarVendedor={veTime}
+        fechados={fechados}
       />
     </>
   );

@@ -196,7 +196,7 @@ export function CartaoEvento({
               {(p) => <Entrada {...p} type="time" defaultValue={evento?.hora_inicio?.slice(0, 5) ?? ""} />}
             </Campo>
             <Campo rotulo="Duração do serviço (horas)" nome="duracao_horas" erro={e.duracao_horas}>
-              {(p) => <Entrada {...p} inputMode="decimal" defaultValue={evento?.duracao_horas ? String(evento.duracao_horas).replace(".", ",") : ""} placeholder="ex.: 4" />}
+              {(p) => <Entrada {...p} inputMode="decimal" defaultValue={evento?.duracao_horas ? String(evento.duracao_horas).replace(".", ",") : ""} placeholder="padrão: 6" />}
             </Campo>
           </div>
           <label className="flex min-h-9 items-center gap-2 text-sm">

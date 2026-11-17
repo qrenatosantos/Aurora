@@ -2281,7 +2281,9 @@ alter table public.configuracoes add column if not exists mod_comissoes boolean 
 alter table public.configuracoes add column if not exists mod_equipe    boolean not null default false;
 -- Agenda de eventos
 alter table public.configuracoes add column if not exists capacidade_simultanea integer not null default 3;
-alter table public.configuracoes add column if not exists duracao_padrao_horas  numeric(4,1) not null default 4;
+alter table public.configuracoes add column if not exists duracao_padrao_horas  numeric(4,1) not null default 6;
+-- Padrão da Aurora: 6 horas de serviço (o evento sem duração recebe este valor).
+alter table public.configuracoes alter column duracao_padrao_horas set default 6;
 -- Atendimento: quem recebe os leads novos ("humano" até o agente estar ligado)
 alter table public.configuracoes add column if not exists atendimento_novos_leads text not null default 'humano';
 -- Condições comerciais padrão das propostas. Ficam VAZIAS até o gestor confirmar.
@@ -3047,6 +3049,10 @@ declare
   v_sit text;
   v_ate date;
 begin
+  -- Sem duração informada: vale o padrão do serviço (Configurações; 6 horas na Aurora)
+  if new.duracao_horas is null then
+    select c.duracao_padrao_horas into new.duracao_horas from public.configuracoes c where c.unica limit 1;
+  end if;
   if new.data is null then
     new.situacao_data := 'consulta';
   elsif new.situacao_data in ('consulta', 'liberada')
