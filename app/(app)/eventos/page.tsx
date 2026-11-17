@@ -147,7 +147,7 @@ export default async function PaginaEventos({ searchParams }: { searchParams: Pr
                               title={`${negocios.get(e.negocio_id)?.titulo ?? "Negócio"} · ${SITUACAO_DATA[e.situacao_data].nome}`}
                               className={cn("block truncate rounded px-1.5 py-1 text-[11px] font-semibold hover:opacity-80", COR_SITUACAO[e.situacao_data])}
                             >
-                              {e.hora_inicio ? `${e.hora_inicio.slice(0, 5)} ` : ""}
+                              {e.hora_inicio ? `${faixaHorario(e.hora_inicio, e.duracao_horas)} ` : ""}
                               {negocios.get(e.negocio_id)?.titulo ?? nomeTipoEvento(e.tipo)}
                             </Link>
                           </li>
@@ -191,7 +191,7 @@ export default async function PaginaEventos({ searchParams }: { searchParams: Pr
                             <span className="block truncate font-semibold">{n?.titulo ?? nomeTipoEvento(e.tipo)}</span>
                             <span className="block truncate text-xs text-texto-2">
                               {[
-                                e.hora_inicio ? e.hora_inicio.slice(0, 5) : "horário a combinar",
+                                e.hora_inicio ? faixaHorario(e.hora_inicio, e.duracao_horas) : "horário a combinar",
                                 [e.local, e.cidade].filter(Boolean).join(", "),
                                 e.convidados ? `${e.convidados} convidados` : e.convidados_faixa,
                               ]
@@ -239,4 +239,14 @@ export default async function PaginaEventos({ searchParams }: { searchParams: Pr
       </div>
     </>
   );
+}
+
+/** "19:00–01:00": início e término do serviço (passa da meia-noite sem problema). */
+function faixaHorario(inicio: string, horas: number | null) {
+  const [h, m] = inicio.split(":").map(Number);
+  const fim = h * 60 + m + Math.round(Number(horas ?? 0) * 60);
+  if (!horas) return inicio.slice(0, 5);
+  const hh = String(Math.floor(fim / 60) % 24).padStart(2, "0");
+  const mm = String(fim % 60).padStart(2, "0");
+  return `${inicio.slice(0, 5)}–${hh}:${mm}`;
 }

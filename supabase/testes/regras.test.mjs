@@ -204,6 +204,23 @@ describe("entrada de leads pelo site", () => {
 
 describe("agenda de eventos", () => {
   const dia = amanha(90);
+  test("folga da equipe: festa do almoço que vai até 18h ocupa a equipe da festa das 19h", async () => {
+    await gestor(async (tx) => {
+      const dia2 = amanha(120);
+      const funil = await um(tx, "select f.id as funil, (select id from etapas where funil_id = f.id order by ordem limit 1) as etapa from funis f limit 1");
+      await tx.query("update configuracoes set capacidade_simultanea = 1, folga_antes_horas = 2, folga_depois_horas = 1.5 where unica");
+      const id = await valor(tx, "insert into negocios (titulo, funil_id, etapa_id, vendedor_id) values ('Almoço', $1, $2, public.meu_vendedor_id()) returning id", [funil.funil, funil.etapa]);
+      await tx.query("insert into eventos (negocio_id, data, hora_inicio, duracao_horas, situacao_data) values ($1, $2, '12:00', 6, 'confirmada')", [id, dia2]);
+      const as19 = await valor(tx, "select public.disponibilidade_data($1::date, '19:00', 6)", [dia2]);
+      assert.equal(as19.situacao, "lotada", "a equipe só volta 19h30 e teria de sair 17h");
+      assert.equal(as19.hora_fim, "01:00");
+      assert.equal(as19.eventos_no_dia[0].hora_fim, "18:00");
+      assert.equal((await valor(tx, "select public.disponibilidade_data($1::date, '22:00', 4)", [dia2])).situacao, "livre", "sai 20h, depois da volta às 19h30");
+      await tx.query("update configuracoes set capacidade_simultanea = 3 where unica");
+      await tx.query("delete from negocios where id = $1", [id]);
+    });
+  });
+
   test("evento sem duração recebe o padrão do serviço (Configurações)", async () => {
     await gestor(async (tx) => {
       const funil = await um(tx, "select f.id as funil, (select id from etapas where funil_id = f.id order by ordem limit 1) as etapa from funis f limit 1");
@@ -385,7 +402,7 @@ describe("proposta: aprovação obrigatória antes do envio", () => {
       assert.ok(Number(p.total) > 0);
       assert.equal(p.preco_pendente, false);
       assert.equal(p.descricao_servico, "4 horas de atendimento com as 4 opções do cardápio, preparo na hora e gestão dos insumos.");
-      assert.equal(p.entrada_pct, null); // condições comerciais só entram depois que o gestor confirmar
+      assert.equal(Number(p.entrada_pct), 60); // condições padrão da Aurora (Configurações)
     });
 
     // link público ainda não existe
@@ -462,7 +479,7 @@ describe("proposta: aprovação obrigatória antes do envio", () => {
     const curto = await visitante((tx) => valor(tx, "select public.aceitar_proposta_publica($1, 'V')", [codigoPublico]));
     assert.equal(curto.ok, false);
     const ok = await visitante((tx) => valor(tx, "select public.aceitar_proposta_publica($1, 'Vitória Lima', '203.0.113.5', 'Navegador de teste')", [codigoPublico]));
-    assert.equal(ok.ok, true);
+    assert.equal(ok.ok, true, ok.mensagem);
     const denovo = await visitante((tx) => valor(tx, "select public.aceitar_proposta_publica($1, 'Vitória Lima')", [codigoPublico]));
     assert.equal(denovo.ja_aceita, true);
     // aceite vira tarefa de cobrança para o dono do negócio
@@ -558,8 +575,8 @@ describe("API do agente", () => {
     assert.deepEqual(pac.dados.pacotes.map((p) => p.nome), ["Essencial", "Signature", "Reserve", "Exclusive"]);
     assert.equal(pac.dados.pacotes[3].drinks.length, 7);
     const cond = await api(chave, "catalogo.condicoes");
-    assert.equal(cond.dados.condicoes.entrada_pct, null);
-    assert.equal(cond.dados.condicoes_confirmadas, false);
+    assert.equal(Number(cond.dados.condicoes.entrada_pct), 60);
+    assert.equal(cond.dados.condicoes_confirmadas, true);
 
     const reserve = pac.dados.pacotes.find((p) => p.nome === "Reserve").id;
     const preco = await api(chave, "precos.calcular", { pacote_id: reserve, convidados: 130, duracao_horas: 5 });

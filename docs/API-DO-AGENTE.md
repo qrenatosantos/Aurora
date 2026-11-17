@@ -399,6 +399,12 @@ Recusa (409) para proposta em rascunho ou com ajustes (use `PATCH`), aguardando 
 
 **`GET /api/v1/agenda/disponibilidade`** · permissão `agenda.ler`  
 Diz se a data está livre, com vagas, lotada ou bloqueada.
+Mande sempre `hora_inicio` (e `duracao_horas`, se não for o padrão de 6 h): a conta usa o horário
+real de cada festa **mais a folga da equipe** antes (deslocamento e montagem) e depois (desmontagem e
+volta), definidas em Configurações. Ex.: um almoço das 12h às 18h ocupa a equipe que atenderia uma
+festa às 19h. Sem horário, o sistema considera o dia inteiro. A resposta traz `hora_fim` e, em
+`eventos_no_dia`, o início e o término das outras festas. **Lotada ou bloqueada: não ofereça a data**;
+sugira outro horário ou outra data e consulte de novo.
 
 | Campo | Como preencher |
 |---|---|

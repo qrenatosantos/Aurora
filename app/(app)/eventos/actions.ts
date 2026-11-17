@@ -39,7 +39,7 @@ export async function excluirBloqueio(id: string): Promise<EstadoAcao> {
 }
 
 /** "Essa data está livre?" — mesma conta que o agente recebe pela API. */
-export async function consultarDisponibilidade(dia: string, hora: string): Promise<{ ok: boolean; mensagem?: string; disponibilidade?: Disponibilidade }> {
+export async function consultarDisponibilidade(dia: string, hora: string, horas = ""): Promise<{ ok: boolean; mensagem?: string; disponibilidade?: Disponibilidade }> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { ok: false, mensagem: "Escolha a data." };
   const p = await exigirPerfil();
   if ("erro" in p) return { ok: false, mensagem: p.erro };
@@ -47,6 +47,7 @@ export async function consultarDisponibilidade(dia: string, hora: string): Promi
   const { data: d, error } = await supabase.rpc("disponibilidade_data", {
     p_data: dia,
     p_hora: /^\d{2}:\d{2}/.test(hora) ? hora.slice(0, 5) : null,
+    p_duracao: Number(horas.replace(",", ".")) >= 0.5 && Number(horas.replace(",", ".")) <= 24 ? Number(horas.replace(",", ".")) : null,
   });
   if (error) return { ok: false, mensagem: mensagemErroBanco(error) };
   return { ok: true, disponibilidade: d as unknown as Disponibilidade };

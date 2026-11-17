@@ -84,6 +84,12 @@ export function FormAurora({ config }: { config: Configuracoes }) {
           <Campo rotulo="Duração padrão do serviço (horas)" nome="duracao_padrao_horas" erro={e.duracao_padrao_horas} ajuda="Usada quando o cliente não informa a duração. Também conta no choque de horário.">
             {(p) => <Entrada {...p} inputMode="decimal" defaultValue={num(config.duracao_padrao_horas)} />}
           </Campo>
+          <Campo rotulo="Folga antes da festa (horas)" nome="folga_antes_horas" erro={e.folga_antes_horas} ajuda="Deslocamento e montagem. A equipe sai esse tempo antes do início.">
+            {(p) => <Entrada {...p} inputMode="decimal" defaultValue={num(config.folga_antes_horas)} />}
+          </Campo>
+          <Campo rotulo="Folga depois da festa (horas)" nome="folga_depois_horas" erro={e.folga_depois_horas} ajuda="Desmontagem e volta. A equipe só fica livre esse tempo depois do término.">
+            {(p) => <Entrada {...p} inputMode="decimal" defaultValue={num(config.folga_depois_horas)} />}
+          </Campo>
           <Campo rotulo="Leads novos do site vão para" nome="atendimento_novos_leads" erro={e.atendimento_novos_leads} ajuda="Deixe em Humano até o agente estar ligado.">
             {(p) => (
               <Selecao {...p} defaultValue={config.atendimento_novos_leads}>

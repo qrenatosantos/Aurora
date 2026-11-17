@@ -50,6 +50,8 @@ export type ConfiguracoesRow = {
   mod_equipe: boolean;
   capacidade_simultanea: number;
   duracao_padrao_horas: number;
+  folga_antes_horas: number;
+  folga_depois_horas: number;
   atendimento_novos_leads: Atendimento;
   entrada_pct: number | null;
   entrada_dias_antes: number | null;
@@ -593,6 +595,9 @@ export type ResultadoCalculo = {
 export type Disponibilidade = {
   data: string;
   hora_inicio: string | null;
+  hora_fim?: string | null;
+  folga_antes_horas?: number;
+  folga_depois_horas?: number;
   capacidade: number;
   confirmados: number;
   reservados: number;
@@ -600,7 +605,7 @@ export type Disponibilidade = {
   bloqueada: boolean;
   motivo_bloqueio: string | null;
   situacao: "livre" | "parcial" | "lotada" | "bloqueada";
-  eventos_no_dia: { hora_inicio: string | null; duracao_horas: number | null; situacao: "confirmada" | "reservada"; bate_no_horario: boolean }[];
+  eventos_no_dia: { hora_inicio: string | null; hora_fim?: string | null; duracao_horas: number | null; situacao: "confirmada" | "reservada"; bate_no_horario: boolean }[];
 };
 
 export type PropostaRevisaoRow = {

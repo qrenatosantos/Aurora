@@ -24,13 +24,14 @@ const SITUACAO = {
 export function ConsultaData() {
   const [dia, setDia] = useState("");
   const [hora, setHora] = useState("");
+  const [horas, setHoras] = useState("");
   const [pendente, iniciar] = useTransition();
   const [resposta, setResposta] = useState<Disponibilidade | null>(null);
   const toast = useToast();
 
   function consultar() {
     iniciar(async () => {
-      const r = await consultarDisponibilidade(dia, hora);
+      const r = await consultarDisponibilidade(dia, hora, horas);
       if (r.ok && r.disponibilidade) setResposta(r.disponibilidade);
       else {
         setResposta(null);
@@ -58,6 +59,12 @@ export function ConsultaData() {
           </label>
           <Entrada id="consulta-hora" type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
         </div>
+        <div className="col-span-2">
+          <label htmlFor="consulta-horas" className="mb-1.5 block text-sm font-medium">
+            Duração em horas (vazio = padrão)
+          </label>
+          <Entrada id="consulta-horas" inputMode="decimal" value={horas} placeholder="6" onChange={(e) => setHoras(e.target.value)} />
+        </div>
       </div>
       <Botao variante="secundario" className="mt-3 w-full" carregando={pendente} disabled={!dia} onClick={consultar}>
         Consultar
@@ -66,13 +73,28 @@ export function ConsultaData() {
         <div className="mt-3 rounded-xl bg-superficie-2 p-3 text-sm" role="status">
           <p className="flex flex-wrap items-center gap-2 font-semibold">
             {formatarData(resposta.data)}
-            {resposta.hora_inicio ? ` às ${resposta.hora_inicio}` : ""} <Selo cor={s.cor}>{s.nome}</Selo>
+            {resposta.hora_inicio ? ` das ${resposta.hora_inicio}${resposta.hora_fim ? ` às ${resposta.hora_fim}` : ""}` : ""} <Selo cor={s.cor}>{s.nome}</Selo>
           </p>
           <p className="mt-1 text-texto-2">
             {resposta.bloqueada
               ? `Data bloqueada${resposta.motivo_bloqueio ? `: ${resposta.motivo_bloqueio}` : ""}.`
               : `${resposta.confirmados} confirmada(s) e ${resposta.reservados} reservada(s) ${resposta.hora_inicio ? "nesse horário" : "no dia"}. Limite: ${resposta.capacidade}. Vagas: ${resposta.vagas}.`}
           </p>
+          {resposta.hora_inicio && resposta.folga_antes_horas !== undefined && (
+            <p className="mt-1 text-xs text-texto-2">
+              Conta {String(resposta.folga_antes_horas).replace(".", ",")} h antes (deslocamento e montagem) e {String(resposta.folga_depois_horas).replace(".", ",")} h depois (desmontagem e volta) de cada festa.
+            </p>
+          )}
+          {resposta.eventos_no_dia.length > 0 && (
+            <ul className="mt-2 space-y-0.5 text-xs">
+              {resposta.eventos_no_dia.map((ev, i) => (
+                <li key={i} className={ev.bate_no_horario ? "font-semibold text-perigo" : "text-texto-2"}>
+                  {ev.hora_inicio ? `${ev.hora_inicio}${ev.hora_fim ? ` às ${ev.hora_fim}` : ""}` : "horário a combinar"} · {ev.situacao}
+                  {ev.bate_no_horario ? " · ocupa a mesma equipe" : ""}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </Cartao>

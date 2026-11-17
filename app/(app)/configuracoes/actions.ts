@@ -83,6 +83,14 @@ const esquemaAurora = z.object({
     .string()
     .transform((v) => Number(v.replace(",", ".")))
     .refine((v) => Number.isFinite(v) && v >= 0.5 && v <= 24, "De 0,5 a 24 horas."),
+  folga_antes_horas: z
+    .string()
+    .transform((v) => Number(v.replace(",", ".")))
+    .refine((v) => Number.isFinite(v) && v >= 0 && v <= 12, "De 0 a 12 horas."),
+  folga_depois_horas: z
+    .string()
+    .transform((v) => Number(v.replace(",", ".")))
+    .refine((v) => Number.isFinite(v) && v >= 0 && v <= 12, "De 0 a 12 horas."),
   atendimento_novos_leads: z.enum(["humano", "agente"]),
   whatsapp_atendimento: z
     .string()

@@ -2284,6 +2284,13 @@ alter table public.configuracoes add column if not exists capacidade_simultanea 
 alter table public.configuracoes add column if not exists duracao_padrao_horas  numeric(4,1) not null default 6;
 -- Padrão da Aurora: 6 horas de serviço (o evento sem duração recebe este valor).
 alter table public.configuracoes alter column duracao_padrao_horas set default 6;
+-- Folga da equipe em volta de cada festa: antes (deslocamento + montagem) e depois (desmontagem + volta).
+-- A mesma equipe não atende duas festas cujos períodos com folga se encostam.
+alter table public.configuracoes add column if not exists folga_antes_horas  numeric(3,1) not null default 2;
+alter table public.configuracoes add column if not exists folga_depois_horas numeric(3,1) not null default 1.5;
+alter table public.configuracoes drop constraint if exists configuracoes_folgas_ck;
+alter table public.configuracoes add constraint configuracoes_folgas_ck
+  check (folga_antes_horas between 0 and 12 and folga_depois_horas between 0 and 12);
 -- Atendimento: quem recebe os leads novos ("humano" até o agente estar ligado)
 alter table public.configuracoes add column if not exists atendimento_novos_leads text not null default 'humano';
 -- Condições comerciais padrão das propostas. Ficam VAZIAS até o gestor confirmar.
@@ -3138,16 +3145,26 @@ declare
   v_res     integer := 0;
   v_lista   jsonb;
   v_ocup    integer;
+  v_antes   interval;
+  v_depois  interval;
+  v_hora_fim time;
 begin
   if p_data is null then
     raise exception 'Informe a data.' using errcode = 'AU400';
   end if;
-  select c.capacidade_simultanea, c.duracao_padrao_horas into v_cap, v_padrao from public.configuracoes c where c.unica limit 1;
+  select c.capacidade_simultanea, c.duracao_padrao_horas,
+         make_interval(mins => (c.folga_antes_horas * 60)::integer), make_interval(mins => (c.folga_depois_horas * 60)::integer)
+    into v_cap, v_padrao, v_antes, v_depois
+    from public.configuracoes c where c.unica limit 1;
   v_cap := coalesce(v_cap, 3);
-  v_padrao := coalesce(v_padrao, 4);
+  v_padrao := coalesce(v_padrao, 6);
+  v_antes := coalesce(v_antes, interval '0');
+  v_depois := coalesce(v_depois, interval '0');
   if p_hora is not null then
-    v_ini := p_data + p_hora;
-    v_fim := v_ini + make_interval(mins => (coalesce(p_duracao, v_padrao) * 60)::integer);
+    -- período em que a equipe fica ocupada: da saída (início - folga antes) até a volta (término + folga depois)
+    v_hora_fim := p_hora + make_interval(mins => (coalesce(p_duracao, v_padrao) * 60)::integer);
+    v_ini := p_data + p_hora - v_antes;
+    v_fim := p_data + p_hora + make_interval(mins => (coalesce(p_duracao, v_padrao) * 60)::integer) + v_depois;
   end if;
 
   select * into v_bloq from public.bloqueios_agenda b where p_data between b.inicio and b.fim order by b.inicio limit 1;
@@ -3158,8 +3175,8 @@ begin
            case
              when e.data = p_data and (p_hora is null or e.hora_inicio is null) then true
              when p_hora is null or e.hora_inicio is null then false
-             else (e.data + e.hora_inicio) < v_fim
-                  and v_ini < (e.data + e.hora_inicio) + make_interval(mins => (coalesce(e.duracao_horas, v_padrao) * 60)::integer)
+             else (e.data + e.hora_inicio) - v_antes < v_fim
+                  and v_ini < (e.data + e.hora_inicio) + make_interval(mins => (coalesce(e.duracao_horas, v_padrao) * 60)::integer) + v_depois
            end as bate
       from public.eventos e
       join public.negocios n on n.id = e.negocio_id
@@ -3172,6 +3189,7 @@ begin
   select count(*) filter (where c.bate and c.situacao = 'confirmada'),
          count(*) filter (where c.bate and c.situacao = 'reservada'),
          coalesce(jsonb_agg(jsonb_build_object('hora_inicio', to_char(c.hora_inicio, 'HH24:MI'), 'duracao_horas', c.duracao_horas,
+                                               'hora_fim', to_char(c.hora_inicio + make_interval(mins => (coalesce(c.duracao_horas, v_padrao) * 60)::integer), 'HH24:MI'),
                                                'situacao', c.situacao, 'bate_no_horario', c.bate)
                             order by c.hora_inicio nulls first) filter (where c.data = p_data), '[]'::jsonb)
     into v_conf, v_res, v_lista
@@ -3181,6 +3199,9 @@ begin
   return jsonb_build_object(
     'data', p_data,
     'hora_inicio', to_char(p_hora, 'HH24:MI'),
+    'hora_fim', to_char(v_hora_fim, 'HH24:MI'),
+    'folga_antes_horas', extract(epoch from v_antes) / 3600,
+    'folga_depois_horas', extract(epoch from v_depois) / 3600,
     'capacidade', v_cap,
     'confirmados', v_conf,
     'reservados', v_res,
